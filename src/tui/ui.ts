@@ -142,9 +142,25 @@ function scoreColor(s: number): string {
   return 'red';
 }
 
-function wrap(text: string, max: number): string {
-  if (text.length <= max) return text;
-  return text.slice(0, max - 1) + '…';
+function wrapLines(text: string, max: number, maxLines: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    if (lines.length === maxLines - 1 && (current + (current ? ' ' : '') + word).length > max) {
+      current = (current + (current ? ' ' : '') + word).slice(0, max - 1) + '…';
+      break;
+    }
+    if ((current + (current ? ' ' : '') + word).length > max) {
+      if (current) lines.push(current);
+      current = word;
+      if (lines.length === maxLines) break;
+    } else {
+      current = current ? current + ' ' + word : word;
+    }
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  return lines;
 }
 
 export function renderThinking(ui: UI, modelA: Model, modelB: Model, dots: string): void {
@@ -188,13 +204,21 @@ export function renderReveal(
     const cc = choiceColor(res.choice);
     const sc = scoreColor(score);
     const icon = res.choice === 'COOPERATE' ? ' [+]  COOPERATE ' : ' [x]   DEFECT   ';
+    const reasoningLines = wrapLines(res.reasoning, 40, 3);
+    const reasoningBlock = reasoningLines
+      .map((l, i) => {
+        const open = i === 0 ? `{yellow-fg}"{/yellow-fg}` : '  ';
+        const close = i === reasoningLines.length - 1 ? `{yellow-fg}"{/yellow-fg}` : '';
+        return `  ${open}{white-fg}${l}{/white-fg}${close}`;
+      })
+      .join('\n');
+    const paddingLines = Math.max(0, 3 - reasoningLines.length);
     return [
       `  {${col}-fg}{bold}${m.name}{/bold}{/${col}-fg}`,
       `  {white-fg}Score: {yellow-fg}${total}{/yellow-fg} pts{/white-fg}`,
       '',
-      `  {yellow-fg}"{/yellow-fg}{white-fg}${wrap(res.reasoning, 40)}{/white-fg}{yellow-fg}"{/yellow-fg}`,
-      '',
-      '',
+      reasoningBlock,
+      ...Array(paddingLines).fill(''),
       '',
       `  {${cc}-fg}{bold}╔══════════════════════╗{/bold}{/${cc}-fg}`,
       `  {${cc}-fg}{bold}║   ${icon}   ║{/bold}{/${cc}-fg}`,
@@ -232,11 +256,7 @@ export function renderMatchBanner(
 
 export function renderScoreboard(ui: UI, stats: Map<string, PlayerStats>): void {
   const sorted = [...stats.values()].sort((a, b) => b.totalScore - a.totalScore);
-  const medals = [
-    '{yellow-fg}🥇{/yellow-fg}',
-    '{white-fg}🥈{/white-fg}',
-    '{yellow-fg}🥉{/yellow-fg}',
-  ];
+  const medalColors = ['yellow', 'white', 'yellow', 'gray', 'gray'];
 
   const lines = sorted.map((s, i) => {
     const total = s.cooperations + s.defections;
@@ -245,9 +265,10 @@ export function renderScoreboard(ui: UI, stats: Map<string, PlayerStats>): void 
     const bar =
       '{green-fg}' + '█'.repeat(filled) + '{/green-fg}' +
       '{gray-fg}' + '░'.repeat(10 - filled) + '{/gray-fg}';
-    const medal = medals[i] ?? `  {gray-fg}${i + 1}.{/gray-fg}`;
+    const col = medalColors[i] ?? 'gray';
+    const rank = `{${col}-fg}#${i + 1}{/${col}-fg}`;
     return (
-      ` ${medal} {white-fg}${s.model.name.padEnd(15)}{/white-fg} ` +
+      ` ${rank} {white-fg}${s.model.name.padEnd(15)}{/white-fg} ` +
       `{yellow-fg}${String(s.totalScore).padStart(4)}{/yellow-fg}pts  ` +
       `${bar} {green-fg}${coopPct}%{/green-fg}`
     );
