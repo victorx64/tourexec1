@@ -15,8 +15,8 @@ function buildPrompt(history: RoundHistory[], roundsLeft: number): string {
   const histText = history.length === 0
     ? 'This is round 1 — no history yet.'
     : history.map((r, i) =>
-        `Round ${i + 1}: You=${r.myChoice}, Opponent=${r.opponentChoice} | You:+${r.myScore} Them:+${r.opponentScore}`
-      ).join('\n');
+      `Round ${i + 1}: You=${r.myChoice}, Opponent=${r.opponentChoice} | You:+${r.myScore} Them:+${r.opponentScore}`
+    ).join('\n');
 
   return `You are competing in an iterated Prisoner's Dilemma tournament against another AI model.
 
@@ -55,7 +55,10 @@ export async function askModel(
     const res = await axios.post(BASE, {
       model: modelId,
       messages: [{ role: 'user', content: buildPrompt(history, roundsLeft) }],
-      max_tokens: 80,
+      max_tokens: 4000,
+      reasoning: {
+        effort: 'medium',
+      },
       temperature: 0.7,
     }, {
       headers: {
