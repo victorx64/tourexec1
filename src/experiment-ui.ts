@@ -14,7 +14,7 @@ export interface RoundMove {
 }
 
 const LIVE_HEIGHT = MODELS.length * 5 + 4;
-const LEGEND_HEIGHT = 5;
+const LEGEND_HEIGHT = 6;
 
 export function buildUI(title = 'Hypothesis Testing') {
   const screen = blessed.screen({ smartCSR: true, title, fullUnicode: true });
@@ -22,33 +22,33 @@ export function buildUI(title = 'Hypothesis Testing') {
   const header = blessed.box({
     top: 0, left: 0, width: '100%', height: 3,
     tags: true, border: { type: 'line' },
-    style: { border: { fg: 'yellow' }, fg: 'yellow', bold: true },
+    style: { border: { fg: '#DA7756' }, fg: '#DA7756', bold: true },
   });
 
   const liveBox = blessed.box({
     top: 3, left: 0, width: '100%', height: LIVE_HEIGHT,
     tags: true, border: { type: 'line' },
-    style: { border: { fg: 'cyan' }, fg: 'white' },
-    label: ' {cyan-fg}LIVE ROUND{/cyan-fg} ',
+    style: { border: { fg: '#DA7756' }, fg: 'white' },
+    label: ' {#DA7756-fg}LIVE ROUND{/#DA7756-fg} ',
   });
 
   const resultsBox = blessed.box({
     top: 3 + LIVE_HEIGHT, left: 0, width: '100%', bottom: 1 + LEGEND_HEIGHT,
     tags: true, border: { type: 'line' },
-    style: { border: { fg: 'green' }, fg: 'white' },
-    label: ' {green-fg}COOPERATION RATES (% of rounds){/green-fg} ',
+    style: { border: { fg: '#DA7756' }, fg: 'white' },
+    label: ' {#DA7756-fg}COOPERATION RATES (% of rounds){/#DA7756-fg} ',
   });
 
   const legendBox = blessed.box({
     bottom: 1, left: 0, width: '100%', height: LEGEND_HEIGHT,
     tags: true, border: { type: 'line' },
-    style: { border: { fg: 'gray' }, fg: 'gray' },
-    label: ' {gray-fg}LEGEND{/gray-fg} ',
+    style: { border: { fg: '#8B7355' }, fg: '#A89880' },
+    label: ' {#8B7355-fg}LEGEND{/#8B7355-fg} ',
   });
 
   const statusBox = blessed.box({
     bottom: 0, left: 0, width: '100%', height: 1,
-    tags: true, style: { fg: 'black', bg: 'cyan' },
+    tags: true, style: { fg: 'white', bg: '#DA7756' },
   });
 
   screen.append(header);
@@ -58,22 +58,18 @@ export function buildUI(title = 'Hypothesis Testing') {
   screen.append(statusBox);
 
   legendBox.setContent(
-    ' {cyan-fg}[S]{/cyan-fg} Safety-aligned models' +
+    ' {#DA7756-fg}[S]{/#DA7756-fg} Safety-aligned models' +
     '   {magenta-fg}[P]{/magenta-fg} Performance-focused models\n' +
     ' {white-fg}AlwC{/white-fg} = Always Cooperate bot' +
     '   {white-fg}AlwD{/white-fg} = Always Defect bot' +
     '   {white-fg}TFT{/white-fg} = Tit-for-Tat (copies LLM\'s last move)' +
     '   {white-fg}Rand{/white-fg} = Random 50/50' +
-    '   {white-fg}AVG{/white-fg} = mean cooperation rate across all bots\n' +
-    ' Cooperation rate: {green-fg}green ≥70%{/green-fg}' +
-    '  {yellow-fg}yellow ≥40%{/yellow-fg}' +
-    '  {red-fg}red <40%{/red-fg}' +
-    '   {green-fg}[+]{/green-fg}/{red-fg}[-]{/red-fg} = cooperated/defected this round',
+    '   {white-fg}AVG{/white-fg} = mean cooperation rate across all bots',
   );
   screen.key(['q', 'C-c'], () => process.exit(0));
 
   header.setContent(
-    '{center}{yellow-fg}{bold}⚗  HYPOTHESIS: Does Safety RLHF Make LLMs More Cooperative?  ⚗{/bold}{/yellow-fg}{/center}\n' +
+    '{center}{#DA7756-fg}{bold}⚗  HYPOTHESIS: Does Safety RLHF Make LLMs More Cooperative?  ⚗{/bold}{/#DA7756-fg}{/center}\n' +
     `{center}{white-fg}${MODELS.length} models  ·  ${BOT_STRATEGIES.length} strategies  ·  ${MODELS.map(m => m.group === 'safety' ? '[S]' : '[P]').join(' ')}{/white-fg}{/center}`,
   );
   screen.render();
@@ -84,7 +80,7 @@ export function buildUI(title = 'Hypothesis Testing') {
 export type UI = ReturnType<typeof buildUI>;
 
 export function groupTag(m: Model) {
-  return m.group === 'safety' ? '{cyan-fg}[S]{/cyan-fg}' : '{magenta-fg}[P]{/magenta-fg}';
+  return m.group === 'safety' ? '{#DA7756-fg}[S]{/#DA7756-fg}' : '{magenta-fg}[P]{/magenta-fg}';
 }
 
 function progressBar(choices: Choice[], currentThinking: boolean, totalRounds: number): string {
@@ -128,9 +124,9 @@ export function renderLiveThinking(
   botChoiceHistory?: Map<string, Choice[]>,
 ) {
   const hdr =
-    ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Repetition {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
-    `  ·  Round {white-fg}${round}/${totalRounds}{/white-fg}`;
+    ` {#DA7756-fg}${strategy.name}{/#DA7756-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
+    `  ·  Rep [${rep}/${totalReps}]` +
+    `  ·  Round [${round}/${totalRounds}]`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
   const reasoningWidth = Math.max(20, screenWidth - 10);
@@ -184,9 +180,9 @@ export function renderLiveResults(
   botChoiceHistory?: Map<string, Choice[]>,
 ) {
   const hdr =
-    ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Repetition {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
-    `  ·  Round {green-fg}${round}/${totalRounds} ✓{/green-fg}`;
+    ` {#DA7756-fg}${strategy.name}{/#DA7756-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
+    `  ·  Rep [${rep}/${totalReps}]` +
+    `  ·  Round [{green-fg}${round}/${totalRounds} ✓{/green-fg}]`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
   const reasoningWidth = Math.max(20, screenWidth - 10);
@@ -276,7 +272,7 @@ export function renderResults(ui: UI, results: Results) {
   lines.push('', ' ' + '═'.repeat(sepW));
   const sA = groupAvg.safety.total > 0 ? coopColor(groupAvg.safety.coops / groupAvg.safety.total) : '{gray-fg} ···{/gray-fg}';
   const pA = groupAvg.performance.total > 0 ? coopColor(groupAvg.performance.coops / groupAvg.performance.total) : '{gray-fg} ···{/gray-fg}';
-  lines.push(` {cyan-fg}[S] Safety avg:{/cyan-fg} ${sA}        {magenta-fg}[P] Performance avg:{/magenta-fg} ${pA}`);
+  lines.push(` {#DA7756-fg}[S] Safety avg:{/#DA7756-fg} ${sA}        {magenta-fg}[P] Performance avg:{/magenta-fg} ${pA}`);
 
   ui.resultsBox.setContent(lines.join('\n'));
   ui.screen.render();

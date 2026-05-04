@@ -99,13 +99,17 @@ export async function askModel(
       const finishReason: string = choice?.finish_reason ?? '';
       const content: string = choice?.message?.content ?? '';
 
-      if (finishReason === 'length' || !content.trim()) {
-        const errMsg = finishReason === 'length'
-          ? `max_tokens exceeded (finish_reason=length), completion truncated`
-          : `empty completion (finish_reason=${finishReason || 'unknown'})`;
+      if (finishReason === 'length') {
+        const errMsg = `max_tokens exceeded (finish_reason=length), completion truncated`;
         log(modelId, errMsg);
-        // Don't retry malformed responses — they won't change on retry
         throw Object.assign(new Error(`[${modelId}] ${errMsg}`), { noRetry: true });
+      }
+
+      if (!content.trim()) {
+        const errMsg = `empty completion (finish_reason=${finishReason || 'unknown'})`;
+        log(modelId, errMsg);
+        lastErr = new Error(`[${modelId}] ${errMsg}`);
+        continue;
       }
 
       const cost: number | null = (res.data.usage?.cost as number | null | undefined) ?? null;
