@@ -40,9 +40,15 @@ async function runRepetition(
     let dots = '';
     const preRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
 
+    // Pre-compute bot choices once per round (sharedDecide rolls once for all models)
+    const sharedBotChoice = strategy.sharedDecide?.();
+    const roundBotChoices = new Map<string, import('./types.js').Choice>(
+      models.map(m => [m.id, sharedBotChoice ?? strategy.decide(histories.get(m.id)!)]),
+    );
+
     const thinkTimer = setInterval(() => {
       dots = dots.length >= 3 ? '' : dots + '.';
-      renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
+      renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory, roundBotChoices);
     }, 350);
 
     const roundsLeft = EXPERIMENT_ROUNDS - round + 1;
@@ -51,7 +57,7 @@ async function runRepetition(
         resolved.set(m.id, res);
         repCost += res.cost ?? 0;
         onModelCost?.(res.cost ?? 0);
-        renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
+        renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory, roundBotChoices);
         return { model: m, res };
       }),
     );
@@ -64,7 +70,7 @@ async function runRepetition(
 
     for (const { model, res } of modelResults) {
       const hist = histories.get(model.id)!;
-      const botChoice = strategy.decide(hist);
+      const botChoice = roundBotChoices.get(model.id)!;
       const payKey = `${res.choice[0]}${botChoice[0]}` as keyof typeof PAYOFF;
       const [scoreM, scoreB] = PAYOFF[payKey];
 

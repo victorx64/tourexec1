@@ -124,6 +124,7 @@ export function renderLiveThinking(
   strategy: BotStrategy, si: number, rep: number, totalReps: number, round: number, totalRounds: number, dots: string,
   resolved: Map<string, LLMResponse | null>,
   choiceHistory?: Map<string, Choice[]>,
+  botChoices?: Map<string, Choice>,
 ) {
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
@@ -138,16 +139,20 @@ export function renderLiveThinking(
     const res = resolved.get(model.id) ?? null;
     const name = model.name.padEnd(18);
     const past = choiceHistory?.get(model.id) ?? [];
+    const botChoice = botChoices?.get(model.id);
+    const botStr = botChoice
+      ? `  bot:{${botChoice === 'COOPERATE' ? 'green' : 'red'}-fg}${botChoice.slice(0, 4)}{/${botChoice === 'COOPERATE' ? 'green' : 'red'}-fg}`
+      : '';
 
     if (res === null) {
       const bar = progressBar(past, true, totalRounds);
-      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}  {gray-fg}thinking${dots}{/gray-fg}`);
+      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}${botStr}  {gray-fg}thinking${dots}{/gray-fg}`);
       lines.push('');
     } else {
       const cc = res.choice === 'COOPERATE' ? 'green' : 'red';
       const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
       const bar = progressBar([...past, res.choice], false, totalRounds);
-      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}  {${cc}-fg}${icon} ${res.choice.padEnd(10)}{/${cc}-fg}`);
+      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}${botStr}  {${cc}-fg}${icon} ${res.choice.padEnd(10)}{/${cc}-fg}`);
       lines.push(`   {gray-fg}"${res.reasoning.slice(0, reasoningWidth)}"{/gray-fg}`);
     }
   }

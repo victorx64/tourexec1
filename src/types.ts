@@ -27,6 +27,8 @@ export interface BotStrategy {
   name: string;
   short: string;
   decide: (llmHistory: RoundHistory[]) => Choice;
+  // If present, called once per round and the result is shared across all models
+  sharedDecide?: () => Choice;
 }
 
 export interface ExperimentResult {

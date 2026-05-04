@@ -67,11 +67,12 @@ async function main() {
       );
 
       // Fake thinking animation
+      const botChoices = new Map<string, Choice>(moves.map(mv => [mv.modelId, mv.botChoice]));
       const resolved = new Map<string, LLMResponse | null>(models.map(m => [m.id, null]));
       let dots = '';
       const thinkTimer = setInterval(() => {
         dots = dots.length >= 3 ? '' : dots + '.';
-        renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, dots, resolved, preRoundHistory);
+        renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, dots, resolved, preRoundHistory, botChoices);
       }, 200);
       await delay(THINKING_PAUSE_MS);
       clearInterval(thinkTimer);
@@ -81,7 +82,7 @@ async function main() {
         mv.modelId,
         { choice: mv.choice, reasoning: mv.reasoning },
       ]));
-      renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, '', resolvedFull, preRoundHistory);
+      renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, '', resolvedFull, preRoundHistory, botChoices);
       await delay(300);
 
       // Append current round choices, then show full results

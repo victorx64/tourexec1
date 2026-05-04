@@ -25,5 +25,6 @@ export const BOT_STRATEGIES: BotStrategy[] = [
     name: 'Random (50%)',
     short: 'Rand',
     decide: () => Math.random() < 0.5 ? 'COOPERATE' : 'DEFECT',
+    sharedDecide: () => Math.random() < 0.5 ? 'COOPERATE' : 'DEFECT',
   },
 ];
