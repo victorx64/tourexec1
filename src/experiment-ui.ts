@@ -125,7 +125,7 @@ export function renderLiveThinking(
 ) {
   const hdr =
     ` {#DA7756-fg}${strategy.name}{/#DA7756-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Rep [${rep}/${totalReps}]` +
+    `  ·  Repetition [${rep}/${totalReps}]` +
     `  ·  Round [${round}/${totalRounds}]`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
@@ -181,7 +181,7 @@ export function renderLiveResults(
 ) {
   const hdr =
     ` {#DA7756-fg}${strategy.name}{/#DA7756-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Rep [${rep}/${totalReps}]` +
+    `  ·  Repetition [${rep}/${totalReps}]` +
     `  ·  Round [{green-fg}${round}/${totalRounds} ✓{/green-fg}]`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
