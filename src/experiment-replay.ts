@@ -71,7 +71,7 @@ async function main() {
       let dots = '';
       const thinkTimer = setInterval(() => {
         dots = dots.length >= 3 ? '' : dots + '.';
-        renderLiveThinking(ui, strategy, currentStratIdx, currentRep, round, totalRounds, dots, resolved, preRoundHistory);
+        renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, dots, resolved, preRoundHistory);
       }, 200);
       await delay(THINKING_PAUSE_MS);
       clearInterval(thinkTimer);
@@ -81,7 +81,7 @@ async function main() {
         mv.modelId,
         { choice: mv.choice, reasoning: mv.reasoning },
       ]));
-      renderLiveThinking(ui, strategy, currentStratIdx, currentRep, round, totalRounds, '', resolvedFull, preRoundHistory);
+      renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, '', resolvedFull, preRoundHistory);
       await delay(300);
 
       // Append current round choices, then show full results
@@ -97,7 +97,7 @@ async function main() {
         };
       });
 
-      renderLiveResults(ui, strategy, currentStratIdx, currentRep, round, totalRounds, roundMoves, choiceHistory);
+      renderLiveResults(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, roundMoves, choiceHistory);
       await delay(ROUND_PAUSE_MS);
     }
 

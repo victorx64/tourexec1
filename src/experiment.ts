@@ -42,7 +42,7 @@ async function runRepetition(
 
     const thinkTimer = setInterval(() => {
       dots = dots.length >= 3 ? '' : dots + '.';
-      renderLiveThinking(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
+      renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
     }, 350);
 
     const roundsLeft = EXPERIMENT_ROUNDS - round + 1;
@@ -51,7 +51,7 @@ async function runRepetition(
         resolved.set(m.id, res);
         repCost += res.cost ?? 0;
         onModelCost?.(res.cost ?? 0);
-        renderLiveThinking(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
+        renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
         return { model: m, res };
       }),
     );
@@ -79,7 +79,7 @@ async function runRepetition(
 
     recordEvent({ type: 'round_result', round, moves: replayMoves });
     const postRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
-    renderLiveResults(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, moves, postRoundHistory);
+    renderLiveResults(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, moves, postRoundHistory);
     await new Promise<void>(r => setTimeout(r, ROUND_PAUSE_MS));
   }
 

@@ -121,16 +121,14 @@ export function renderErrors(_ui: UI, _errors: unknown[]) {}
 
 export function renderLiveThinking(
   ui: UI,
-  strategy: BotStrategy, si: number, rep: number, round: number, totalRounds: number, dots: string,
+  strategy: BotStrategy, si: number, rep: number, totalReps: number, round: number, totalRounds: number, dots: string,
   resolved: Map<string, LLMResponse | null>,
   choiceHistory?: Map<string, Choice[]>,
 ) {
-  const left = totalRounds - round + 1;
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Rep {yellow-fg}${rep}{/yellow-fg}` +
-    `  ·  Round {white-fg}${round}/${totalRounds}{/white-fg}` +
-    `  ·  {gray-fg}${left} left{/gray-fg}`;
+    `  ·  Rep {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
+    `  ·  Round {white-fg}${round}/${totalRounds}{/white-fg}`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
   const reasoningWidth = Math.max(20, screenWidth - 10);
@@ -160,16 +158,14 @@ export function renderLiveThinking(
 
 export function renderLiveResults(
   ui: UI,
-  strategy: BotStrategy, si: number, rep: number, round: number, totalRounds: number,
+  strategy: BotStrategy, si: number, rep: number, totalReps: number, round: number, totalRounds: number,
   moves: RoundMove[],
   choiceHistory?: Map<string, Choice[]>,
 ) {
-  const left = totalRounds - round;
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Rep {yellow-fg}${rep}{/yellow-fg}` +
-    `  ·  Round {green-fg}${round}/${totalRounds} ✓{/green-fg}` +
-    `  ·  {gray-fg}${left} left{/gray-fg}`;
+    `  ·  Rep {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
+    `  ·  Round {green-fg}${round}/${totalRounds} ✓{/green-fg}`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
   const reasoningWidth = Math.max(20, screenWidth - 10);
