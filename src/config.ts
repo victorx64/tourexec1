@@ -1,15 +1,22 @@
 import { Model } from './types.js';
 
+// ── Hypothesis #4: Safety RLHF vs Performance ──────────────────────────────
 export const MODELS: Model[] = [
-  { id: 'openai/gpt-5.5', name: 'GPT-5.5', short: 'GPT' },
-  { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', short: 'Snnet' },
-  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', short: 'Gemni' },
-  { id: 'qwen/qwen3.6-plus', name: 'Qwen3.6 Plus', short: 'Qwen' },
-  { id: 'deepseek/deepseek-v4-pro', name: 'DeepSeek V4 Pro', short: 'DpSk4' },
-  { id: 'moonshotai/kimi-k2.6', name: 'Kimi K2.6', short: 'Kimi' },
+  // Safety-focused: explicit harmless/helpful alignment
+  { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', short: 'Claud', group: 'safety' },
+  { id: 'openai/gpt-5.4', name: 'GPT-5.4', short: 'GP5.4', group: 'safety' },
+  // Performance-focused: capability-first, minimal safety tuning
+  { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3', short: 'DpSkV', group: 'performance' },
+  { id: 'qwen/qwen3.6-plus', name: 'Qwen 3.6 Plus', short: 'Qwen3', group: 'performance' },
 ];
 
+// ── Tournament (LLM vs LLM) ─────────────────────────────────────────────────
 export const ROUNDS_PER_MATCH = 7;
+
+// ── Experiment (LLM vs Bot) ──────────────────────────────────────────────────
+export const EXPERIMENT_ROUNDS = 20;
+export const REPETITIONS = 5;
+export const MEMORY_WINDOW = 10; // rounds shown to LLM (matching the paper)
 
 export const PAYOFF = {
   CC: [3, 3] as [number, number],

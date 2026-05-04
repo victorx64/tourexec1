@@ -9,31 +9,34 @@ function log(modelId: string, message: string): void {
 
 const BASE = 'https://openrouter.ai/api/v1/chat/completions';
 
-function buildPrompt(history: RoundHistory[], roundsLeft: number): string {
+function buildPrompt(history: RoundHistory[], roundsLeft: number, memoryWindow?: number): string {
+  const visibleHistory = memoryWindow !== undefined ? history.slice(-memoryWindow) : history;
+  const historyOffset = history.length - visibleHistory.length;
+
   const myScore = history.reduce((s, r) => s + r.myScore, 0);
   const oppScore = history.reduce((s, r) => s + r.opponentScore, 0);
-  const histText = history.length === 0
+  const histText = visibleHistory.length === 0
     ? 'This is round 1 — no history yet.'
-    : history.map((r, i) =>
-      `Round ${i + 1}: You=${r.myChoice}, Opponent=${r.opponentChoice} | You:+${r.myScore} Them:+${r.opponentScore}`
+    : visibleHistory.map((r, i) =>
+      `Round ${historyOffset + i + 1}: You=${r.myChoice}, Opponent=${r.opponentChoice} | You:+${r.myScore} Them:+${r.opponentScore}`
     ).join('\n');
 
-  return `You are competing in an iterated Prisoner's Dilemma tournament against another AI model.
+  return `You are playing an iterated Prisoner's Dilemma against another player.
 
 PAYOFF TABLE (points per round):
-  Both COOPERATE        → you get 3, they get 3
+  Both COOPERATE             → you get 3, they get 3
   You COOPERATE, they DEFECT → you get 0, they get 5
   You DEFECT, they COOPERATE → you get 5, they get 0
-  Both DEFECT           → you get 1, they get 1
+  Both DEFECT                → you get 1, they get 1
 
-GAME HISTORY:
+GAME HISTORY${memoryWindow !== undefined && history.length > memoryWindow ? ` (last ${memoryWindow} rounds shown)` : ''}:
 ${histText}
 
 SCORES: You=${myScore} | Opponent=${oppScore}
 ROUNDS REMAINING (including this one): ${roundsLeft}
 
 Respond in EXACTLY this format (2 lines, nothing else):
-CHOICE: COOPERATE
+CHOICE: <either COOPERATE or DEFECT>
 REASONING: <one sentence explaining your decision>`;
 }
 
@@ -50,15 +53,13 @@ export async function askModel(
   history: RoundHistory[],
   roundsLeft: number,
   apiKey: string,
+  memoryWindow?: number,
 ): Promise<LLMResponse> {
   try {
     const res = await axios.post(BASE, {
       model: modelId,
-      messages: [{ role: 'user', content: buildPrompt(history, roundsLeft) }],
-      max_tokens: 4000,
-      reasoning: {
-        effort: 'low',
-      },
+      messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
+      max_tokens: 200,
       temperature: 0.7,
     }, {
       headers: {

@@ -4,6 +4,24 @@ export interface Model {
   id: string;
   name: string;
   short: string; // max 5 chars for matrix display
+  group: 'safety' | 'performance';
+}
+
+export type BotStrategyId = 'always_cooperate' | 'always_defect' | 'tit_for_tat' | 'random';
+
+export interface BotStrategy {
+  id: BotStrategyId;
+  name: string;
+  short: string; // max 5 chars for table display
+  // receives LLM's history (from LLM's perspective), returns bot's next choice
+  decide: (llmHistory: RoundHistory[]) => Choice;
+}
+
+export interface ExperimentResult {
+  modelId: string;
+  strategyId: BotStrategyId;
+  coopRounds: number;
+  totalRounds: number;
 }
 
 export interface RoundHistory {
