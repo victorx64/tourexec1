@@ -4,7 +4,7 @@ Does safety RLHF make LLMs more cooperative? This project replicates and extends
 
 **Hypothesis:** Models explicitly trained for harmlessness/helpfulness (Claude, GPT) cooperate more than capability-focused models (DeepSeek, Qwen).
 
-See the [report](report.md) for detailed results and analysis.
+See the [report](Report.md) for detailed results and analysis.
 
 ## Payoff matrix
 
