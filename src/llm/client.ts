@@ -4,7 +4,7 @@ import { Choice, LLMResponse, RoundHistory } from '../types.js';
 
 function log(modelId: string, message: string): void {
   const line = `[${new Date().toISOString()}] [${modelId}] ${message}\n`;
-  try { appendFileSync('tournament.log', line); } catch { /* ignore */ }
+  try { appendFileSync('experiment.log', line); } catch { /* ignore */ }
 }
 
 const BASE = 'https://openrouter.ai/api/v1/chat/completions';
@@ -59,7 +59,7 @@ export async function askModel(
     const res = await axios.post(BASE, {
       model: modelId,
       messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
-      max_tokens: 200,
+      max_tokens: 4000,
       temperature: 0.7,
     }, {
       headers: {
@@ -70,15 +70,28 @@ export async function askModel(
       },
       timeout: 30_000,
     });
-    return parse(res.data.choices[0].message.content as string);
+
+    const choice = res.data.choices?.[0];
+    const finishReason: string = choice?.finish_reason ?? '';
+    const content: string = choice?.message?.content ?? '';
+
+    if (finishReason === 'length' || !content.trim()) {
+      const errMsg = finishReason === 'length'
+        ? `max_tokens exceeded (finish_reason=length), completion truncated`
+        : `empty completion (finish_reason=${finishReason || 'unknown'})`;
+      log(modelId, errMsg);
+      throw new Error(`[${modelId}] ${errMsg}`);
+    }
+
+    return parse(content);
   } catch (err) {
     if (err instanceof AxiosError) {
       const status = err.response?.status;
-      const body = JSON.stringify(err.response?.data ?? err.message).slice(0, 300);
-      log(modelId, `HTTP ${status ?? 'timeout'}: ${body}`);
-    } else {
-      log(modelId, String(err));
+      const body = JSON.stringify(err.response?.data ?? err.message).slice(0, 200);
+      const errMsg = `HTTP ${status ?? 'timeout'}: ${body}`;
+      log(modelId, errMsg);
+      throw new Error(`[${modelId}] ${errMsg}`);
     }
-    return { choice: 'COOPERATE', reasoning: '[API error — defaulting to cooperate]' };
+    throw err;
   }
 }
