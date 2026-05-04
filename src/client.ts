@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { appendFileSync } from 'fs';
-import { Choice, LLMResponse, RoundHistory } from '../types.js';
+import { Choice, LLMResponse, RoundHistory } from './types.js';
 
 function log(modelId: string, message: string): void {
   const line = `[${new Date().toISOString()}] [${modelId}] ${message}\n`;
@@ -59,9 +59,9 @@ export async function askModel(
     const res = await axios.post(BASE, {
       model: modelId,
       messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
-      max_tokens: 4000,
+      max_tokens: 8192,
       reasoning: {
-        effort: 'low',
+        effort: 'medium',
       },
       temperature: 0.7,
     }, {

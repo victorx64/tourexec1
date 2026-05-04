@@ -69,21 +69,7 @@ Results are saved to `replays/experiment-*.json` (full round-by-round replay) an
 
 ## Configuration
 
-Edit [`src/config.ts`](src/config.ts) to swap models or tune experiment parameters:
-
-```typescript
-export const MODELS: Model[] = [
-  { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', short: 'Claud', group: 'safety' },
-  { id: 'openai/gpt-5.4',             name: 'GPT-5.4',           short: 'GP5.4', group: 'safety' },
-  { id: 'deepseek/deepseek-v3.2',     name: 'DeepSeek V3',       short: 'DpSkV', group: 'performance' },
-  { id: 'qwen/qwen3.6-plus',          name: 'Qwen 3.6 Plus',     short: 'Qwen3', group: 'performance' },
-];
-
-export const EXPERIMENT_ROUNDS = 20;  // rounds per game
-export const REPETITIONS      = 5;   // repetitions per (model × opponent) pair
-export const MEMORY_WINDOW    = 10;  // rounds of history shown to LLM
-```
-
+Edit [`src/config.ts`](src/config.ts) to swap models or tune experiment parameters.
 Any model available on [OpenRouter](https://openrouter.ai) can be used.
 
 ## Project structure
@@ -93,8 +79,7 @@ src/
 ├── types.ts               — shared TypeScript types + replay format
 ├── config.ts              — models, experiment parameters, payoff table
 ├── bot.ts                 — programmatic opponents (AlwaysC, AlwaysD, TFT, Random)
-├── llm/
-│   └── client.ts          — OpenRouter API client + prompt builder
+├── client.ts              — OpenRouter API client + prompt builder
 ├── experiment-ui.ts       — blessed terminal UI (shared by experiment + replay)
 ├── experiment.ts          — experiment runner, records replay file
 └── experiment-replay.ts   — replay player (no API calls)

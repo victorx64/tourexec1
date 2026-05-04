@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { writeFileSync, appendFileSync, mkdirSync } from 'fs';
 import { MODELS, PAYOFF, EXPERIMENT_ROUNDS, REPETITIONS, MEMORY_WINDOW } from './config.js';
 import { BOT_STRATEGIES } from './bot.js';
-import { askModel } from './llm/client.js';
+import { askModel } from './client.js';
 import {
   buildUI, renderLiveThinking, renderLiveResults, renderResults,
   type UI, type Results, type RoundMove,
