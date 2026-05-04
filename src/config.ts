@@ -10,12 +10,9 @@ export const MODELS: Model[] = [
   { id: 'qwen/qwen3.6-plus', name: 'Qwen 3.6 Plus', short: 'Qwen3', group: 'performance' },
 ];
 
-// ── Tournament (LLM vs LLM) ─────────────────────────────────────────────────
-export const ROUNDS_PER_MATCH = 7;
-
 // ── Experiment (LLM vs Bot) ──────────────────────────────────────────────────
-export const EXPERIMENT_ROUNDS = 10;
-export const REPETITIONS = 3;
+export const EXPERIMENT_ROUNDS = 7;
+export const REPETITIONS = 1;
 export const MEMORY_WINDOW = 10; // rounds shown to LLM (matching the paper)
 
 export const PAYOFF = {

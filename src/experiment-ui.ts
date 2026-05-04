@@ -13,7 +13,7 @@ export interface RoundMove {
   score: number;
 }
 
-const LIVE_HEIGHT = MODELS.length * 2 + 4;
+const LIVE_HEIGHT = MODELS.length * 5 + 4;
 const LEGEND_HEIGHT = 5;
 
 export function buildUI(title = 'Hypothesis Testing') {
@@ -125,6 +125,7 @@ export function renderLiveThinking(
   resolved: Map<string, LLMResponse | null>,
   choiceHistory?: Map<string, Choice[]>,
   botChoices?: Map<string, Choice>,
+  botChoiceHistory?: Map<string, Choice[]>,
 ) {
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
@@ -139,21 +140,35 @@ export function renderLiveThinking(
     const res = resolved.get(model.id) ?? null;
     const name = model.name.padEnd(18);
     const past = choiceHistory?.get(model.id) ?? [];
-    const botChoice = botChoices?.get(model.id);
-    const botStr = botChoice
-      ? `  bot:{${botChoice === 'COOPERATE' ? 'green' : 'red'}-fg}${botChoice.slice(0, 4)}{/${botChoice === 'COOPERATE' ? 'green' : 'red'}-fg}`
+    const pastBot = botChoiceHistory?.get(model.id) ?? [];
+    const currentBotChoice = botChoices?.get(model.id);
+    const botHistoryFull = currentBotChoice ? [...pastBot, currentBotChoice] : pastBot;
+    const botBar = progressBar(botHistoryFull, false, totalRounds);
+    const bc = currentBotChoice === 'COOPERATE' ? 'green' : currentBotChoice === 'DEFECT' ? 'red' : 'gray';
+    const botIcon = currentBotChoice === 'COOPERATE' ? '[+]' : '[x]';
+    const botChoiceStr = currentBotChoice
+      ? `  {${bc}-fg}${botIcon} ${currentBotChoice.padEnd(10)}{/${bc}-fg}`
       : '';
+    const botLine = `     ${'bot'.padEnd(18)}  ${botBar}${botChoiceStr}`;
 
     if (res === null) {
       const bar = progressBar(past, true, totalRounds);
-      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}${botStr}  {gray-fg}thinking${dots}{/gray-fg}`);
+      lines.push(botLine);
+      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}  {gray-fg}thinking${dots}{/gray-fg}`);
+      lines.push('');
+      lines.push('');
       lines.push('');
     } else {
       const cc = res.choice === 'COOPERATE' ? 'green' : 'red';
       const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
       const bar = progressBar([...past, res.choice], false, totalRounds);
-      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}${botStr}  {${cc}-fg}${icon} ${res.choice.padEnd(10)}{/${cc}-fg}`);
-      lines.push(`   {gray-fg}"${res.reasoning.slice(0, reasoningWidth)}"{/gray-fg}`);
+      const r1 = res.reasoning.slice(0, reasoningWidth);
+      const r2 = res.reasoning.slice(reasoningWidth, reasoningWidth * 2);
+      lines.push(botLine);
+      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}  {${cc}-fg}${icon} ${res.choice.padEnd(10)}{/${cc}-fg}`);
+      lines.push(`   {gray-fg}"${r1}${r2 ? '' : '"'}{/gray-fg}`);
+      lines.push(`    {gray-fg}${r2 ? r2 + '"' : ''}{/gray-fg}`);
+      lines.push('');
     }
   }
 
@@ -166,6 +181,7 @@ export function renderLiveResults(
   strategy: BotStrategy, si: number, rep: number, totalReps: number, round: number, totalRounds: number,
   moves: RoundMove[],
   choiceHistory?: Map<string, Choice[]>,
+  botChoiceHistory?: Map<string, Choice[]>,
 ) {
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
@@ -182,16 +198,25 @@ export function renderLiveResults(
     const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
     const choice = res.choice.padEnd(10);
     const bc = botChoice === 'COOPERATE' ? 'green' : 'red';
+    const botIcon = botChoice === 'COOPERATE' ? '[+]' : '[-]';
     const sc = score >= 3 ? 'green' : score >= 1 ? 'yellow' : 'red';
     const bar = progressBar(choiceHistory?.get(model.id) ?? [], false, totalRounds);
+    const botBar = progressBar(botChoiceHistory?.get(model.id) ?? [], false, totalRounds);
 
+    lines.push(
+      `     ${'bot'.padEnd(18)}  ${botBar}` +
+      `  {${bc}-fg}${botIcon} ${botChoice.padEnd(10)}{/${bc}-fg}`,
+    );
     lines.push(
       ` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}` +
       `  {${cc}-fg}${icon} ${choice}{/${cc}-fg}` +
-      `  bot:{${bc}-fg}${botChoice.slice(0, 4)}{/${bc}-fg}` +
       `  {${sc}-fg}+${score}pts{/${sc}-fg}`,
     );
-    lines.push(`   {gray-fg}"${res.reasoning.slice(0, reasoningWidth)}"{/gray-fg}`);
+    const r1 = res.reasoning.slice(0, reasoningWidth);
+    const r2 = res.reasoning.slice(reasoningWidth, reasoningWidth * 2);
+    lines.push(`   {gray-fg}"${r1}${r2 ? '' : '"'}{/gray-fg}`);
+    lines.push(`    {gray-fg}${r2 ? r2 + '"' : ''}{/gray-fg}`);
+    lines.push('');
   }
 
   ui.liveBox.setContent(lines.join('\n'));

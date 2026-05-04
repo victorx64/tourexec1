@@ -42,6 +42,7 @@ async function main() {
   let currentRep = 1;
   let currentStratIdx = 0;
   const choiceHistory = new Map<string, Choice[]>(models.map(m => [m.id, []]));
+  const botChoiceHistory = new Map<string, Choice[]>(models.map(m => [m.id, []]));
 
   for (const event of events) {
     if (event.type === 'rep_start') {
@@ -49,6 +50,7 @@ async function main() {
       currentRep = event.rep;
       currentStratIdx = strategies.findIndex(s => s.id === currentStrategyId);
       for (const choices of choiceHistory.values()) choices.length = 0;
+      for (const choices of botChoiceHistory.values()) choices.length = 0;
 
       ui.statusBox.setContent(
         ` {bold}▶ ${strategies[currentStratIdx].name} [${currentStratIdx + 1}/${strategies.length}]  ·  Rep ${currentRep}/${config.REPETITIONS}{/bold}  {gray-fg}[Q] quit{/gray-fg}`,
@@ -68,11 +70,14 @@ async function main() {
 
       // Fake thinking animation
       const botChoices = new Map<string, Choice>(moves.map(mv => [mv.modelId, mv.botChoice]));
+      const preBotHistory = new Map<string, Choice[]>(
+        [...botChoiceHistory.entries()].map(([id, cs]) => [id, [...cs]]),
+      );
       const resolved = new Map<string, LLMResponse | null>(models.map(m => [m.id, null]));
       let dots = '';
       const thinkTimer = setInterval(() => {
         dots = dots.length >= 3 ? '' : dots + '.';
-        renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, dots, resolved, preRoundHistory, botChoices);
+        renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, dots, resolved, preRoundHistory, botChoices, preBotHistory);
       }, 200);
       await delay(THINKING_PAUSE_MS);
       clearInterval(thinkTimer);
@@ -82,11 +87,14 @@ async function main() {
         mv.modelId,
         { choice: mv.choice, reasoning: mv.reasoning },
       ]));
-      renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, '', resolvedFull, preRoundHistory, botChoices);
+      renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, '', resolvedFull, preRoundHistory, botChoices, preBotHistory);
       await delay(300);
 
       // Append current round choices, then show full results
-      for (const mv of moves) choiceHistory.get(mv.modelId)!.push(mv.choice);
+      for (const mv of moves) {
+        choiceHistory.get(mv.modelId)!.push(mv.choice);
+        botChoiceHistory.get(mv.modelId)!.push(mv.botChoice);
+      }
 
       const roundMoves: RoundMove[] = moves.map(mv => {
         const model = models.find(m => m.id === mv.modelId)!;
@@ -98,7 +106,7 @@ async function main() {
         };
       });
 
-      renderLiveResults(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, roundMoves, choiceHistory);
+      renderLiveResults(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, roundMoves, choiceHistory, botChoiceHistory);
       await delay(ROUND_PAUSE_MS);
     }
 
