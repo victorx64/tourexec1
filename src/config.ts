@@ -12,7 +12,7 @@ export const MODELS: Model[] = [
 
 // ── Experiment (LLM vs Bot) ──────────────────────────────────────────────────
 export const EXPERIMENT_ROUNDS = 10;
-export const REPETITIONS = 3;
+export const REPETITIONS = 10;
 export const MEMORY_WINDOW = 10; // rounds shown to LLM (matching the paper)
 
 export const PAYOFF = {

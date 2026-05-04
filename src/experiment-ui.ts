@@ -89,7 +89,7 @@ function progressBar(choices: Choice[], currentThinking: boolean, totalRounds: n
     let ch: string;
     let color: string;
     if (i < choices.length) {
-      ch = choices[i] === 'COOPERATE' ? '+' : '-';
+      ch = choices[i] === 'COOPERATE' ? '+' : 'x';
       color = choices[i] === 'COOPERATE' ? 'green' : 'red';
     } else if (i === choices.length && currentThinking) {
       ch = '?';
@@ -196,7 +196,7 @@ export function renderLiveResults(
     const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
     const choice = res.choice.padEnd(10);
     const bc = botChoice === 'COOPERATE' ? 'green' : 'red';
-    const botIcon = botChoice === 'COOPERATE' ? '[+]' : '[-]';
+    const botIcon = botChoice === 'COOPERATE' ? '[+]' : '[x]';
     const sc = score >= 3 ? 'green' : score >= 1 ? 'yellow' : 'red';
     const bar = progressBar(choiceHistory?.get(model.id) ?? [], false, totalRounds);
     const botBar = progressBar(botChoiceHistory?.get(model.id) ?? [], false, totalRounds);
