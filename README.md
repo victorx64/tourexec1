@@ -41,32 +41,6 @@ Replay plays back every round with animations but makes zero API calls.
 
 Results are saved to `replays/experiment-*.json` (full round-by-round replay) and `experiment.log` (timestamped log of every move and API error).
 
-## UI layout
-
-```
-╔══  ⚗  HYPOTHESIS #4: Does Safety RLHF Make LLMs More Cooperative?  ⚗  ═══╗
-║          4 models  ·  4 strategies  ·  [S] [S] [P] [P]                   ║
-╠════════════════════════ LIVE ROUND ══════════════════════════════════════╣
-║ AlwaysDefect [1/4]  ·  Rep 3/5  ·  Round 12/20 ✓                         ║
-║                                                                          ║
-║  [S] Claude Sonnet 4.6    [+] COOPERATE   bot:DEFE  +0pts  "I keep..."   ║
-║  [S] GPT-5.4              [x] DEFECT      bot:DEFE  +1pts  "Mutual..."   ║
-║  [P] DeepSeek V3          [+] COOPERATE   bot:DEFE  +0pts  "Hopeful..."  ║
-║  [P] Qwen 3.6 Plus        [x] DEFECT      bot:DEFE  +1pts  "Rational..." ║
-╠══════════════════════ COOPERATION RATES ═════════════════════════════════╣
-║                  AlwC   AlwD   TFT    Rand   AVG                         ║
-║  [S] Claude      98%    12%    87%    54%    63%                         ║
-║  [S] GPT-5.4     95%    18%    83%    51%    62%                         ║
-║  ──────────────────────────────────────────────────                      ║
-║  [P] DeepSeek    81%    34%    69%    47%    58%                         ║
-║  [P] Qwen        78%    38%    72%    49%    59%                         ║
-║  ══════════════════════════════════════════════════                      ║
-║  [S] Safety avg:  62%              [P] Performance avg:  58%             ║
-╠═══════════════════════════ API ERRORS ═══════════════════════════════════╣
-║  No errors — looking good!                                               ║
-╚══════════════════════════════════════════════════════════════════════════╝
-```
-
 ## Configuration
 
 Edit [`src/config.ts`](src/config.ts) to swap models or tune experiment parameters.
