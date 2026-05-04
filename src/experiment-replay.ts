@@ -27,7 +27,7 @@ async function main() {
   const file = loadReplay(process.argv[2]);
   const { models, strategies, events, config } = file;
 
-  const ui = buildUI('Hypothesis #4 — REPLAY');
+  const ui = buildUI();
 
   const results: Results = new Map(
     models.map(m => [m.id, new Map(strategies.map(s => [s.id, { coops: 0, total: 0 }]))]),

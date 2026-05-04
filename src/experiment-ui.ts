@@ -16,7 +16,7 @@ export interface RoundMove {
 const LIVE_HEIGHT = MODELS.length * 5 + 4;
 const LEGEND_HEIGHT = 6;
 
-export function buildUI(title = 'Hypothesis Testing') {
+export function buildUI(title = 'LLM Prisoner\'s Dilemma Experiment') {
   const screen = blessed.screen({ smartCSR: true, title, fullUnicode: true });
 
   const header = blessed.box({
