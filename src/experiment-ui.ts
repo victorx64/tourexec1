@@ -14,8 +14,9 @@ export interface RoundMove {
 }
 
 const LIVE_HEIGHT = MODELS.length * 2 + 4;
+const LEGEND_HEIGHT = 5;
 
-export function buildUI(title = 'Hypothesis #4') {
+export function buildUI(title = 'Hypothesis Testing') {
   const screen = blessed.screen({ smartCSR: true, title, fullUnicode: true });
 
   const header = blessed.box({
@@ -32,10 +33,17 @@ export function buildUI(title = 'Hypothesis #4') {
   });
 
   const resultsBox = blessed.box({
-    top: 3 + LIVE_HEIGHT, left: 0, width: '100%', bottom: 1,
+    top: 3 + LIVE_HEIGHT, left: 0, width: '100%', bottom: 1 + LEGEND_HEIGHT,
     tags: true, border: { type: 'line' },
     style: { border: { fg: 'green' }, fg: 'white' },
     label: ' {green-fg}COOPERATION RATES (% of rounds){/green-fg} ',
+  });
+
+  const legendBox = blessed.box({
+    bottom: 1, left: 0, width: '100%', height: LEGEND_HEIGHT,
+    tags: true, border: { type: 'line' },
+    style: { border: { fg: 'gray' }, fg: 'gray' },
+    label: ' {gray-fg}LEGEND{/gray-fg} ',
   });
 
   const statusBox = blessed.box({
@@ -46,7 +54,22 @@ export function buildUI(title = 'Hypothesis #4') {
   screen.append(header);
   screen.append(liveBox);
   screen.append(resultsBox);
+  screen.append(legendBox);
   screen.append(statusBox);
+
+  legendBox.setContent(
+    ' {cyan-fg}[S]{/cyan-fg} Safety-aligned models' +
+    '   {magenta-fg}[P]{/magenta-fg} Performance-focused models\n' +
+    ' {white-fg}AlwC{/white-fg} = Always Cooperate bot' +
+    '   {white-fg}AlwD{/white-fg} = Always Defect bot' +
+    '   {white-fg}TFT{/white-fg} = Tit-for-Tat (copies LLM\'s last move)' +
+    '   {white-fg}Rand{/white-fg} = Random 50/50' +
+    '   {white-fg}AVG{/white-fg} = mean cooperation rate across all bots\n' +
+    ' Cooperation rate: {green-fg}green ≥70%{/green-fg}' +
+    '  {yellow-fg}yellow ≥40%{/yellow-fg}' +
+    '  {red-fg}red <40%{/red-fg}' +
+    '   {green-fg}[+]{/green-fg}/{red-fg}[-]{/red-fg} = cooperated/defected this round',
+  );
   screen.key(['q', 'C-c'], () => process.exit(0));
 
   header.setContent(

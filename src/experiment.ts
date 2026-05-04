@@ -27,9 +27,11 @@ async function runRepetition(
   si: number,
   rep: number,
   recordEvent: (e: ExperimentReplayEvent) => void,
-): Promise<Map<string, number>> {
+  onRoundEnd?: (roundCost: number) => void,
+): Promise<{ coops: Map<string, number>; cost: number }> {
   const histories = new Map<string, RoundHistory[]>(models.map(m => [m.id, []]));
   const coops = new Map<string, number>(models.map(m => [m.id, 0]));
+  let repCost = 0;
 
   for (let round = 1; round <= EXPERIMENT_ROUNDS; round++) {
     log(`[${strategy.id}] rep=${rep} round=${round}/${EXPERIMENT_ROUNDS}`);
@@ -58,6 +60,7 @@ async function runRepetition(
     const moves: RoundMove[] = [];
     const replayMoves: ReplayMove[] = [];
 
+    let roundCost = 0;
     for (const { model, res } of modelResults) {
       const hist = histories.get(model.id)!;
       const botChoice = strategy.decide(hist);
@@ -65,6 +68,7 @@ async function runRepetition(
       const [scoreM, scoreB] = PAYOFF[payKey];
 
       if (res.choice === 'COOPERATE') coops.set(model.id, coops.get(model.id)! + 1);
+      roundCost += res.cost ?? 0;
 
       log(`  ${model.short}: ${res.choice} vs bot:${botChoice} → +${scoreM}pts`);
 
@@ -72,6 +76,8 @@ async function runRepetition(
       moves.push({ model, res, botChoice, score: scoreM });
       replayMoves.push({ modelId: model.id, choice: res.choice, reasoning: res.reasoning, botChoice, score: scoreM });
     }
+    repCost += roundCost;
+    onRoundEnd?.(roundCost);
 
     recordEvent({ type: 'round_result', round, moves: replayMoves });
     const postRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
@@ -79,7 +85,7 @@ async function runRepetition(
     await new Promise<void>(r => setTimeout(r, ROUND_PAUSE_MS));
   }
 
-  return coops;
+  return { coops, cost: repCost };
 }
 
 // ── Save replay ──────────────────────────────────────────────────────────────
@@ -117,18 +123,28 @@ async function main() {
   ui.screen.render();
   await new Promise<void>(r => setTimeout(r, 1000));
 
+  let totalCost = 0;
+
   for (let si = 0; si < BOT_STRATEGIES.length; si++) {
     const strategy = BOT_STRATEGIES[si];
 
     for (let rep = 1; rep <= REPETITIONS; rep++) {
       ui.statusBox.setContent(
-        ` {bold}${strategy.name} [${si + 1}/${BOT_STRATEGIES.length}]  ·  Rep ${rep}/${REPETITIONS}{/bold}  {gray-fg}[Q] quit{/gray-fg}`,
+        ` {bold}${strategy.name} [${si + 1}/${BOT_STRATEGIES.length}]  ·  Rep ${rep}/${REPETITIONS}{/bold}` +
+        `  {gray-fg}spent: $${totalCost.toFixed(4)}  [Q] quit{/gray-fg}`,
       );
       ui.screen.render();
 
       recordEvent({ type: 'rep_start', strategyId: strategy.id, rep });
 
-      const repCoops = await runRepetition(ui, MODELS, strategy, si, rep, recordEvent);
+      const { coops: repCoops } = await runRepetition(ui, MODELS, strategy, si, rep, recordEvent, (roundCost) => {
+        totalCost += roundCost;
+        ui.statusBox.setContent(
+          ` {bold}${strategy.name} [${si + 1}/${BOT_STRATEGIES.length}]  ·  Rep ${rep}/${REPETITIONS}{/bold}` +
+          `  {gray-fg}spent: $${totalCost.toFixed(4)}  [Q] quit{/gray-fg}`,
+        );
+        ui.screen.render();
+      });
       const coopCounts: Record<string, number> = {};
 
       for (const model of MODELS) {
@@ -146,8 +162,11 @@ async function main() {
 
   recordEvent({ type: 'experiment_end' });
   const replayPath = saveReplay(replayEvents);
-  log(`=== Experiment complete. Replay: ${replayPath} ===`);
-  ui.statusBox.setContent(` {bold}Complete! Replay saved → ${replayPath}{/bold}  {gray-fg}[Q] quit{/gray-fg}`);
+  log(`=== Experiment complete. Total cost: $${totalCost.toFixed(4)}. Replay: ${replayPath} ===`);
+  ui.statusBox.setContent(
+    ` {bold}Complete! Replay saved → ${replayPath}{/bold}` +
+    `  {green-fg}Total spent: $${totalCost.toFixed(4)}{/green-fg}  {gray-fg}[Q] quit{/gray-fg}`,
+  );
   ui.screen.render();
 }
 

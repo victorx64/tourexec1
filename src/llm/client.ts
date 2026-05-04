@@ -60,6 +60,9 @@ export async function askModel(
       model: modelId,
       messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
       max_tokens: 4000,
+      reasoning: {
+        effort: 'low',
+      },
       temperature: 0.7,
     }, {
       headers: {
@@ -83,7 +86,8 @@ export async function askModel(
       throw new Error(`[${modelId}] ${errMsg}`);
     }
 
-    return parse(content);
+    const cost: number | null = (res.data.usage?.cost as number | null | undefined) ?? null;
+    return { ...parse(content), cost };
   } catch (err) {
     if (err instanceof AxiosError) {
       const status = err.response?.status;

@@ -17,6 +17,7 @@ export interface RoundHistory {
 export interface LLMResponse {
   choice: Choice;
   reasoning: string;
+  cost?: number | null;
 }
 
 export type BotStrategyId = 'always_cooperate' | 'always_defect' | 'tit_for_tat' | 'random';
