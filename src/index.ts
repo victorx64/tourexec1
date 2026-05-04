@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { MODELS, ROUNDS_PER_MATCH, PAYOFF, DELAYS } from './config.js';
 import { askModel } from './llm/client.js';
+import { Recorder } from './recorder.js';
 import {
   createUI,
   renderHeader,
@@ -32,6 +33,7 @@ function pairs(models: Model[]): [Model, Model][] {
 
 async function main() {
   const ui = createUI();
+  const rec = new Recorder(MODELS, ROUNDS_PER_MATCH);
 
   // Initialize stats
   const stats = new Map<string, PlayerStats>(
@@ -49,6 +51,8 @@ async function main() {
   for (let matchIdx = 0; matchIdx < allPairs.length; matchIdx++) {
     const [modelA, modelB] = allPairs[matchIdx];
     const matchNum = matchIdx + 1;
+
+    rec.push({ type: 'match_start', matchNum, totalMatches: allPairs.length, modelAId: modelA.id, modelBId: modelB.id });
 
     // Show match banner
     renderMatchBanner(ui, modelA, modelB, matchNum, allPairs.length);
@@ -117,6 +121,8 @@ async function main() {
       const totalA = stats.get(modelA.id)!.totalScore;
       const totalB = stats.get(modelB.id)!.totalScore;
 
+      rec.push({ type: 'round_result', round, totalRounds: ROUNDS_PER_MATCH, resA, resB, scoreA, scoreB });
+
       // Reveal choices
       renderReveal(ui, modelA, resA, scoreA, totalA, modelB, resB, scoreB, totalB);
       renderScoreboard(ui, stats);
@@ -125,12 +131,16 @@ async function main() {
       await delay(DELAYS.reveal);
     }
 
+    const coopRateA = coopsA / ROUNDS_PER_MATCH;
+    const coopRateB = coopsB / ROUNDS_PER_MATCH;
+    rec.push({ type: 'match_end', coopRateA, coopRateB, scoreA: matchScoreA, scoreB: matchScoreB });
+
     // Record match result
     matchRecords.push({
       modelA: modelA.id,
       modelB: modelB.id,
-      coopRateA: coopsA / ROUNDS_PER_MATCH,
-      coopRateB: coopsB / ROUNDS_PER_MATCH,
+      coopRateA,
+      coopRateB,
       scoreA: matchScoreA,
       scoreB: matchScoreB,
     });
@@ -139,9 +149,12 @@ async function main() {
     await delay(DELAYS.roundTransition);
   }
 
+  rec.push({ type: 'tournament_end' });
+  const savedTo = rec.save();
+
   // Final results screen
   renderHeader(ui, allPairs.length, allPairs.length, ROUNDS_PER_MATCH, ROUNDS_PER_MATCH);
-  setStatus(ui, 'Tournament complete! Press Q to exit.');
+  setStatus(ui, `Tournament complete! Replay saved → ${savedTo}  [Q] quit`);
   renderScoreboard(ui, stats);
   renderMatrix(ui, MODELS, matchRecords);
 }

@@ -33,3 +33,19 @@ export interface MatchRecord {
   scoreA: number;
   scoreB: number;
 }
+
+// ── Replay ──────────────────────────────────────────────────────────────────
+
+export type ReplayEvent =
+  | { type: 'match_start'; matchNum: number; totalMatches: number; modelAId: string; modelBId: string }
+  | { type: 'round_result'; round: number; totalRounds: number; resA: LLMResponse; resB: LLMResponse; scoreA: number; scoreB: number }
+  | { type: 'match_end'; coopRateA: number; coopRateB: number; scoreA: number; scoreB: number }
+  | { type: 'tournament_end' };
+
+export interface ReplayFile {
+  version: 1;
+  timestamp: string;
+  models: Model[];
+  roundsPerMatch: number;
+  events: ReplayEvent[];
+}

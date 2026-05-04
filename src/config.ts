@@ -1,11 +1,12 @@
 import { Model } from './types.js';
 
 export const MODELS: Model[] = [
+  { id: 'openai/gpt-5.5', name: 'GPT-5.5', short: 'GPT' },
+  { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', short: 'Snnet' },
+  { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash Preview', short: 'Gemni' },
+  { id: 'qwen/qwen3.6-plus', name: 'Qwen3.6 Plus', short: 'Qwen' },
+  { id: 'deepseek/deepseek-v4-pro', name: 'DeepSeek V4 Pro', short: 'DpSk4' },
   { id: 'moonshotai/kimi-k2.6', name: 'Kimi K2.6', short: 'Kimi' },
-  { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet', short: 'Snnet' },
-  { id: 'google/gemini-3-flash-preview', name: 'Gemini Flash', short: 'Gemni' },
-  { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3', short: 'DpSk3' },
-  { id: 'anthropic/claude-opus-4.7', name: 'Claude Opus', short: 'Opus' },
 ];
 
 export const ROUNDS_PER_MATCH = 7;

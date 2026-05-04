@@ -57,7 +57,7 @@ export async function askModel(
       messages: [{ role: 'user', content: buildPrompt(history, roundsLeft) }],
       max_tokens: 4000,
       reasoning: {
-        effort: 'medium',
+        effort: 'low',
       },
       temperature: 0.7,
     }, {
