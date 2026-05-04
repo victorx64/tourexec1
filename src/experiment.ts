@@ -27,7 +27,7 @@ async function runRepetition(
   si: number,
   rep: number,
   recordEvent: (e: ExperimentReplayEvent) => void,
-  onRoundEnd?: (roundCost: number) => void,
+  onModelCost?: (cost: number) => void,
 ): Promise<{ coops: Map<string, number>; cost: number }> {
   const histories = new Map<string, RoundHistory[]>(models.map(m => [m.id, []]));
   const coops = new Map<string, number>(models.map(m => [m.id, 0]));
@@ -49,6 +49,8 @@ async function runRepetition(
     const promises = models.map(m =>
       askModel(m.id, histories.get(m.id)!, roundsLeft, API_KEY, MEMORY_WINDOW).then(res => {
         resolved.set(m.id, res);
+        repCost += res.cost ?? 0;
+        onModelCost?.(res.cost ?? 0);
         renderLiveThinking(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
         return { model: m, res };
       }),
@@ -60,7 +62,6 @@ async function runRepetition(
     const moves: RoundMove[] = [];
     const replayMoves: ReplayMove[] = [];
 
-    let roundCost = 0;
     for (const { model, res } of modelResults) {
       const hist = histories.get(model.id)!;
       const botChoice = strategy.decide(hist);
@@ -68,7 +69,6 @@ async function runRepetition(
       const [scoreM, scoreB] = PAYOFF[payKey];
 
       if (res.choice === 'COOPERATE') coops.set(model.id, coops.get(model.id)! + 1);
-      roundCost += res.cost ?? 0;
 
       log(`  ${model.short}: ${res.choice} vs bot:${botChoice} → +${scoreM}pts`);
 
@@ -76,8 +76,6 @@ async function runRepetition(
       moves.push({ model, res, botChoice, score: scoreM });
       replayMoves.push({ modelId: model.id, choice: res.choice, reasoning: res.reasoning, botChoice, score: scoreM });
     }
-    repCost += roundCost;
-    onRoundEnd?.(roundCost);
 
     recordEvent({ type: 'round_result', round, moves: replayMoves });
     const postRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
@@ -137,8 +135,8 @@ async function main() {
 
       recordEvent({ type: 'rep_start', strategyId: strategy.id, rep });
 
-      const { coops: repCoops } = await runRepetition(ui, MODELS, strategy, si, rep, recordEvent, (roundCost) => {
-        totalCost += roundCost;
+      const { coops: repCoops } = await runRepetition(ui, MODELS, strategy, si, rep, recordEvent, (cost) => {
+        totalCost += cost;
         ui.statusBox.setContent(
           ` {bold}${strategy.name} [${si + 1}/${BOT_STRATEGIES.length}]  ·  Rep ${rep}/${REPETITIONS}{/bold}` +
           `  {gray-fg}spent: $${totalCost.toFixed(4)}  [Q] quit{/gray-fg}`,
