@@ -48,6 +48,18 @@ function parse(text: string): LLMResponse {
   return { choice, reasoning };
 }
 
+const MAX_RETRIES = 3;
+const RETRY_BASE_MS = 2_000;
+
+function isRetryable(err: unknown): boolean {
+  if (err instanceof AxiosError) {
+    const status = err.response?.status;
+    // Retry on network errors (no status), 429 rate-limit, and 5xx server errors
+    return status === undefined || status === 429 || (status >= 500 && status < 600);
+  }
+  return false;
+}
+
 export async function askModel(
   modelId: string,
   history: RoundHistory[],
@@ -55,47 +67,65 @@ export async function askModel(
   apiKey: string,
   memoryWindow?: number,
 ): Promise<LLMResponse> {
-  try {
-    const res = await axios.post(BASE, {
-      model: modelId,
-      messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
-      max_tokens: 8192,
-      reasoning: {
-        effort: 'medium',
-      },
-      temperature: 0.7,
-    }, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://llm-tournament.local',
-        'X-Title': 'LLM Prisoner Dilemma Tournament',
-        'Content-Type': 'application/json',
-      },
-      timeout: 30_000,
-    });
+  let lastErr: unknown;
 
-    const choice = res.data.choices?.[0];
-    const finishReason: string = choice?.finish_reason ?? '';
-    const content: string = choice?.message?.content ?? '';
-
-    if (finishReason === 'length' || !content.trim()) {
-      const errMsg = finishReason === 'length'
-        ? `max_tokens exceeded (finish_reason=length), completion truncated`
-        : `empty completion (finish_reason=${finishReason || 'unknown'})`;
-      log(modelId, errMsg);
-      throw new Error(`[${modelId}] ${errMsg}`);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = RETRY_BASE_MS * 2 ** (attempt - 1);
+      log(modelId, `retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
     }
 
-    const cost: number | null = (res.data.usage?.cost as number | null | undefined) ?? null;
-    return { ...parse(content), cost };
-  } catch (err) {
-    if (err instanceof AxiosError) {
-      const status = err.response?.status;
-      const body = JSON.stringify(err.response?.data ?? err.message).slice(0, 200);
-      const errMsg = `HTTP ${status ?? 'timeout'}: ${body}`;
-      log(modelId, errMsg);
-      throw new Error(`[${modelId}] ${errMsg}`);
+    try {
+      const res = await axios.post(BASE, {
+        model: modelId,
+        messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
+        max_tokens: 8192,
+        reasoning: {
+          effort: 'medium',
+        },
+        temperature: 0.7,
+      }, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://llm-tournament.local',
+          'X-Title': 'LLM Prisoner Dilemma Tournament',
+          'Content-Type': 'application/json',
+        },
+        timeout: 30_000,
+      });
+
+      const choice = res.data.choices?.[0];
+      const finishReason: string = choice?.finish_reason ?? '';
+      const content: string = choice?.message?.content ?? '';
+
+      if (finishReason === 'length' || !content.trim()) {
+        const errMsg = finishReason === 'length'
+          ? `max_tokens exceeded (finish_reason=length), completion truncated`
+          : `empty completion (finish_reason=${finishReason || 'unknown'})`;
+        log(modelId, errMsg);
+        // Don't retry malformed responses — they won't change on retry
+        throw Object.assign(new Error(`[${modelId}] ${errMsg}`), { noRetry: true });
+      }
+
+      const cost: number | null = (res.data.usage?.cost as number | null | undefined) ?? null;
+      return { ...parse(content), cost };
+    } catch (err) {
+      if ((err as { noRetry?: boolean }).noRetry) throw err;
+
+      if (err instanceof AxiosError) {
+        const status = err.response?.status;
+        const body = JSON.stringify(err.response?.data ?? err.message).slice(0, 200);
+        const errMsg = `HTTP ${status ?? 'timeout'}: ${body}`;
+        log(modelId, errMsg);
+        lastErr = new Error(`[${modelId}] ${errMsg}`);
+        if (!isRetryable(err)) throw lastErr;
+      } else {
+        lastErr = err;
+        if (!isRetryable(err)) throw lastErr;
+      }
     }
-    throw err;
   }
+
+  throw lastErr;
 }
