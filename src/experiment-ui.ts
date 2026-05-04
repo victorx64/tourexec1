@@ -64,26 +64,70 @@ export function groupTag(m: Model) {
   return m.group === 'safety' ? '{cyan-fg}[S]{/cyan-fg}' : '{magenta-fg}[P]{/magenta-fg}';
 }
 
+function progressBar(choices: Choice[], currentThinking: boolean, totalRounds: number): string {
+  const segments: Array<{ count: number; ch: string; color: string }> = [];
+  for (let i = 0; i < totalRounds; i++) {
+    let ch: string;
+    let color: string;
+    if (i < choices.length) {
+      ch = choices[i] === 'COOPERATE' ? '+' : '-';
+      color = choices[i] === 'COOPERATE' ? 'green' : 'red';
+    } else if (i === choices.length && currentThinking) {
+      ch = '?';
+      color = 'yellow';
+    } else {
+      ch = '·';
+      color = 'gray';
+    }
+    const last = segments[segments.length - 1];
+    if (last && last.color === color) {
+      last.count++;
+    } else {
+      segments.push({ count: 1, ch, color });
+    }
+  }
+  let bar = '[';
+  for (const { count, ch, color } of segments) {
+    bar += `{${color}-fg}${ch.repeat(count)}{/${color}-fg}`;
+  }
+  return bar + ']';
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function renderErrors(_ui: UI, _errors: unknown[]) {}
+
 export function renderLiveThinking(
   ui: UI,
-  strategy: BotStrategy, si: number, rep: number, round: number, dots: string,
+  strategy: BotStrategy, si: number, rep: number, round: number, totalRounds: number, dots: string,
   resolved: Map<string, LLMResponse | null>,
+  choiceHistory?: Map<string, Choice[]>,
 ) {
+  const left = totalRounds - round + 1;
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Rep {yellow-fg}${rep}/${MODELS.length > 0 ? '?' : '?'}{/yellow-fg}` +
-    `  ·  Round {white-fg}${round}{/white-fg}`;
+    `  ·  Rep {yellow-fg}${rep}{/yellow-fg}` +
+    `  ·  Round {white-fg}${round}/${totalRounds}{/white-fg}` +
+    `  ·  {gray-fg}${left} left{/gray-fg}`;
+
+  const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
+  const reasoningWidth = Math.max(20, screenWidth - 10);
 
   const lines = [hdr, ''];
   for (const model of MODELS) {
     const res = resolved.get(model.id) ?? null;
     const name = model.name.padEnd(18);
+    const past = choiceHistory?.get(model.id) ?? [];
+
     if (res === null) {
-      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  {gray-fg}thinking${dots}{/gray-fg}`);
+      const bar = progressBar(past, true, totalRounds);
+      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}  {gray-fg}thinking${dots}{/gray-fg}`);
+      lines.push('');
     } else {
       const cc = res.choice === 'COOPERATE' ? 'green' : 'red';
       const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
-      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  {${cc}-fg}${icon} ${res.choice.padEnd(10)}{/${cc}-fg} {gray-fg}"${res.reasoning.slice(0, 38)}"{/gray-fg}`);
+      const bar = progressBar([...past, res.choice], false, totalRounds);
+      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}  {${cc}-fg}${icon} ${res.choice.padEnd(10)}{/${cc}-fg}`);
+      lines.push(`   {gray-fg}"${res.reasoning.slice(0, reasoningWidth)}"{/gray-fg}`);
     }
   }
 
@@ -95,11 +139,17 @@ export function renderLiveResults(
   ui: UI,
   strategy: BotStrategy, si: number, rep: number, round: number, totalRounds: number,
   moves: RoundMove[],
+  choiceHistory?: Map<string, Choice[]>,
 ) {
+  const left = totalRounds - round;
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
     `  ·  Rep {yellow-fg}${rep}{/yellow-fg}` +
-    `  ·  Round {green-fg}${round}/${totalRounds} ✓{/green-fg}`;
+    `  ·  Round {green-fg}${round}/${totalRounds} ✓{/green-fg}` +
+    `  ·  {gray-fg}${left} left{/gray-fg}`;
+
+  const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
+  const reasoningWidth = Math.max(20, screenWidth - 10);
 
   const lines = [hdr, ''];
   for (const { model, res, botChoice, score } of moves) {
@@ -109,13 +159,15 @@ export function renderLiveResults(
     const choice = res.choice.padEnd(10);
     const bc = botChoice === 'COOPERATE' ? 'green' : 'red';
     const sc = score >= 3 ? 'green' : score >= 1 ? 'yellow' : 'red';
+    const bar = progressBar(choiceHistory?.get(model.id) ?? [], false, totalRounds);
+
     lines.push(
-      ` ${groupTag(model)} {white-fg}${name}{/white-fg}` +
+      ` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}` +
       `  {${cc}-fg}${icon} ${choice}{/${cc}-fg}` +
       `  bot:{${bc}-fg}${botChoice.slice(0, 4)}{/${bc}-fg}` +
-      `  {${sc}-fg}+${score}pts{/${sc}-fg}` +
-      `  {gray-fg}"${res.reasoning.slice(0, 35)}"{/gray-fg}`,
+      `  {${sc}-fg}+${score}pts{/${sc}-fg}`,
     );
+    lines.push(`   {gray-fg}"${res.reasoning.slice(0, reasoningWidth)}"{/gray-fg}`);
   }
 
   ui.liveBox.setContent(lines.join('\n'));
@@ -135,9 +187,11 @@ export function coopColor(rate: number | null): string {
 export function renderResults(ui: UI, results: Results) {
   const colW = 7;
   const nameW = 20;
+  // visible width: 1(leading space) + 3(tag) + 1(space) + nameW + strategies*colW + 2(spaces) + 4(avg) = nameW+4+colW*n+6
+  const sepW = nameW + 4 + BOT_STRATEGIES.length * colW + 6;
   const stratHeaders = BOT_STRATEGIES.map(s => s.short.padEnd(colW)).join('');
   const lines: string[] = [
-    ` {white-fg}${''.padEnd(nameW)}${stratHeaders}  AVG{/white-fg}`,
+    ` {white-fg}${''.padEnd(nameW + 4)}${stratHeaders}  AVG{/white-fg}`,
     '',
   ];
 
@@ -149,11 +203,11 @@ export function renderResults(ui: UI, results: Results) {
 
   for (const model of MODELS) {
     if (lastGroup !== null && lastGroup !== model.group)
-      lines.push(' ' + '─'.repeat(nameW + BOT_STRATEGIES.length * colW + 8));
+      lines.push(' ' + '─'.repeat(sepW));
     lastGroup = model.group;
 
     const tag = groupTag(model);
-    const namePart = `${tag} ${model.name}`.padEnd(nameW + 11);
+    const namePart = `${tag} ${model.name.padEnd(nameW)}`;
     let sumCoops = 0, sumTotal = 0;
 
     const cells = BOT_STRATEGIES.map(s => {
@@ -170,7 +224,7 @@ export function renderResults(ui: UI, results: Results) {
     lines.push(` ${namePart}${cells.join('')}  ${avg}`);
   }
 
-  lines.push('', ' ' + '═'.repeat(nameW + BOT_STRATEGIES.length * colW + 8));
+  lines.push('', ' ' + '═'.repeat(sepW));
   const sA = groupAvg.safety.total > 0 ? coopColor(groupAvg.safety.coops / groupAvg.safety.total) : '{gray-fg} ···{/gray-fg}';
   const pA = groupAvg.performance.total > 0 ? coopColor(groupAvg.performance.coops / groupAvg.performance.total) : '{gray-fg} ···{/gray-fg}';
   lines.push(` {cyan-fg}[S] Safety avg:{/cyan-fg} ${sA}        {magenta-fg}[P] Performance avg:{/magenta-fg} ${pA}`);

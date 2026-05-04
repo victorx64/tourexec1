@@ -36,17 +36,18 @@ async function runRepetition(
 
     const resolved = new Map<string, import('./types.js').LLMResponse | null>(models.map(m => [m.id, null]));
     let dots = '';
+    const preRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
 
     const thinkTimer = setInterval(() => {
       dots = dots.length >= 3 ? '' : dots + '.';
-      renderLiveThinking(ui, strategy, si, rep, round, dots, resolved);
+      renderLiveThinking(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
     }, 350);
 
     const roundsLeft = EXPERIMENT_ROUNDS - round + 1;
     const promises = models.map(m =>
       askModel(m.id, histories.get(m.id)!, roundsLeft, API_KEY, MEMORY_WINDOW).then(res => {
         resolved.set(m.id, res);
-        renderLiveThinking(ui, strategy, si, rep, round, dots, resolved);
+        renderLiveThinking(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory);
         return { model: m, res };
       }),
     );
@@ -73,7 +74,8 @@ async function runRepetition(
     }
 
     recordEvent({ type: 'round_result', round, moves: replayMoves });
-    renderLiveResults(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, moves);
+    const postRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
+    renderLiveResults(ui, strategy, si, rep, round, EXPERIMENT_ROUNDS, moves, postRoundHistory);
     await new Promise<void>(r => setTimeout(r, ROUND_PAUSE_MS));
   }
 
