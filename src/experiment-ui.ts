@@ -129,7 +129,7 @@ export function renderLiveThinking(
 ) {
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Rep {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
+    `  ·  Repetition {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
     `  ·  Round {white-fg}${round}/${totalRounds}{/white-fg}`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
@@ -185,7 +185,7 @@ export function renderLiveResults(
 ) {
   const hdr =
     ` {cyan-fg}${strategy.name}{/cyan-fg} [${si + 1}/${BOT_STRATEGIES.length}]` +
-    `  ·  Rep {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
+    `  ·  Repetition {yellow-fg}${rep}/${totalReps}{/yellow-fg}` +
     `  ·  Round {green-fg}${round}/${totalRounds} ✓{/green-fg}`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
@@ -261,12 +261,12 @@ export function renderResults(ui: UI, results: Results) {
 
     const cells = BOT_STRATEGIES.map(s => {
       const t = results.get(model.id)?.get(s.id);
-      if (!t || t.total === 0) return '{gray-fg} ···  {/gray-fg}';
+      if (!t || t.total === 0) return '{gray-fg} ···{/gray-fg}' + ' '.repeat(colW - 4);
       sumCoops += t.coops;
       sumTotal += t.total;
       groupAvg[model.group].coops += t.coops;
       groupAvg[model.group].total += t.total;
-      return coopColor(t.coops / t.total).padEnd(colW);
+      return coopColor(t.coops / t.total) + ' '.repeat(colW - 4);
     });
 
     const avg = sumTotal > 0 ? coopColor(sumCoops / sumTotal) : '{gray-fg} ···{/gray-fg}';
