@@ -72,7 +72,7 @@ async function main() {
       // Flash all results at once, then show full breakdown
       const resolvedFull = new Map<string, LLMResponse | null>(moves.map(mv => [
         mv.modelId,
-        { choice: mv.choice, reasoning: mv.reasoning, isError: mv.isError },
+        { choice: mv.choice, reasoning: mv.reasoning },
       ]));
       renderLiveThinking(ui, strategy, currentStratIdx, currentRep, round, '', resolvedFull);
       await delay(300);
@@ -82,7 +82,7 @@ async function main() {
         const model = models.find(m => m.id === mv.modelId)!;
         return {
           model,
-          res: { choice: mv.choice, reasoning: mv.reasoning, isError: mv.isError },
+          res: { choice: mv.choice, reasoning: mv.reasoning },
           botChoice: mv.botChoice,
           score: mv.score,
         };

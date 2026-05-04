@@ -41,7 +41,6 @@ export interface ReplayMove {
   modelId: string;
   choice: Choice;
   reasoning: string;
-  isError?: boolean;
   botChoice: Choice;
   score: number;
 }

@@ -65,11 +65,11 @@ async function runRepetition(
 
       if (res.choice === 'COOPERATE') coops.set(model.id, coops.get(model.id)! + 1);
 
-      log(`  ${model.short}: ${res.choice} vs bot:${botChoice} → +${scoreM}pts${res.isError ? ' [ERROR]' : ''}`);
+      log(`  ${model.short}: ${res.choice} vs bot:${botChoice} → +${scoreM}pts`);
 
       hist.push({ myChoice: res.choice, opponentChoice: botChoice, myScore: scoreM, opponentScore: scoreB });
       moves.push({ model, res, botChoice, score: scoreM });
-      replayMoves.push({ modelId: model.id, choice: res.choice, reasoning: res.reasoning, isError: res.isError, botChoice, score: scoreM });
+      replayMoves.push({ modelId: model.id, choice: res.choice, reasoning: res.reasoning, botChoice, score: scoreM });
     }
 
     recordEvent({ type: 'round_result', round, moves: replayMoves });

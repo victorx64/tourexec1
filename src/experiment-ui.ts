@@ -32,17 +32,10 @@ export function buildUI(title = 'Hypothesis #4') {
   });
 
   const resultsBox = blessed.box({
-    top: 3 + LIVE_HEIGHT, left: 0, width: '100%', bottom: 4,
+    top: 3 + LIVE_HEIGHT, left: 0, width: '100%', bottom: 1,
     tags: true, border: { type: 'line' },
     style: { border: { fg: 'green' }, fg: 'white' },
     label: ' {green-fg}COOPERATION RATES (% of rounds){/green-fg} ',
-  });
-
-  const errorsBox = blessed.box({
-    bottom: 1, left: 0, width: '100%', height: 3,
-    tags: true, border: { type: 'line' },
-    style: { border: { fg: 'red' }, fg: 'white' },
-    label: ' {red-fg}API ERRORS{/red-fg} ',
   });
 
   const statusBox = blessed.box({
@@ -53,17 +46,16 @@ export function buildUI(title = 'Hypothesis #4') {
   screen.append(header);
   screen.append(liveBox);
   screen.append(resultsBox);
-  screen.append(errorsBox);
   screen.append(statusBox);
   screen.key(['q', 'C-c'], () => process.exit(0));
 
   header.setContent(
-    '{center}{yellow-fg}{bold}⚗  HYPOTHESIS #4: Does Safety RLHF Make LLMs More Cooperative?  ⚗{/bold}{/yellow-fg}{/center}\n' +
+    '{center}{yellow-fg}{bold}⚗  HYPOTHESIS: Does Safety RLHF Make LLMs More Cooperative?  ⚗{/bold}{/yellow-fg}{/center}\n' +
     `{center}{white-fg}${MODELS.length} models  ·  ${BOT_STRATEGIES.length} strategies  ·  ${MODELS.map(m => m.group === 'safety' ? '[S]' : '[P]').join(' ')}{/white-fg}{/center}`,
   );
   screen.render();
 
-  return { screen, liveBox, resultsBox, errorsBox, statusBox };
+  return { screen, liveBox, resultsBox, statusBox };
 }
 
 export type UI = ReturnType<typeof buildUI>;
@@ -88,8 +80,6 @@ export function renderLiveThinking(
     const name = model.name.padEnd(18);
     if (res === null) {
       lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  {gray-fg}thinking${dots}{/gray-fg}`);
-    } else if (res.isError) {
-      lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  {yellow-fg}[!] ERROR  "${res.reasoning.slice(0, 50)}"{/yellow-fg}`);
     } else {
       const cc = res.choice === 'COOPERATE' ? 'green' : 'red';
       const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
@@ -114,9 +104,9 @@ export function renderLiveResults(
   const lines = [hdr, ''];
   for (const { model, res, botChoice, score } of moves) {
     const name = model.name.padEnd(18);
-    const cc = res.isError ? 'yellow' : res.choice === 'COOPERATE' ? 'green' : 'red';
-    const icon = res.isError ? '[!]' : res.choice === 'COOPERATE' ? '[+]' : '[x]';
-    const choice = (res.isError ? 'ERROR' : res.choice).padEnd(10);
+    const cc = res.choice === 'COOPERATE' ? 'green' : 'red';
+    const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
+    const choice = res.choice.padEnd(10);
     const bc = botChoice === 'COOPERATE' ? 'green' : 'red';
     const sc = score >= 3 ? 'green' : score >= 1 ? 'yellow' : 'red';
     lines.push(
@@ -132,13 +122,6 @@ export function renderLiveResults(
   ui.screen.render();
 }
 
-export function renderErrors(ui: UI, errors: string[]) {
-  const content = errors.length === 0
-    ? ' {gray-fg}No errors — looking good!{/gray-fg}'
-    : errors.slice(-2).map(e => ` {red-fg}⚠ ${e}{/red-fg}`).join('\n');
-  ui.errorsBox.setContent(content);
-  ui.screen.render();
-}
 
 export function coopColor(rate: number | null): string {
   if (rate === null) return '{gray-fg} ···{/gray-fg}';
