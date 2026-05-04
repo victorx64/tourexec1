@@ -80,9 +80,10 @@ export async function askModel(
       const res = await axios.post(BASE, {
         model: modelId,
         messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
-        max_tokens: 8192,
+        max_tokens: 500,
         reasoning: {
-          effort: 'medium',
+          effort: 'none',
+          enable: false,
         },
         temperature: 0.7,
       }, {

@@ -48,7 +48,7 @@ export function buildUI(title = 'Hypothesis Testing') {
 
   const statusBox = blessed.box({
     bottom: 0, left: 0, width: '100%', height: 1,
-    tags: true, style: { fg: 'white', bg: '#DA7756' },
+    tags: true, style: { fg: 'black', bg: '#DA7756' },
   });
 
   screen.append(header);
@@ -129,7 +129,8 @@ export function renderLiveThinking(
     `  ·  Round [${round}/${totalRounds}]`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
-  const reasoningWidth = Math.max(20, screenWidth - 10);
+  const r1Width = Math.max(20, screenWidth - 10);
+  const r2Width = Math.max(20, screenWidth - 7);
 
   const lines = [hdr, ''];
   for (const model of MODELS) {
@@ -158,8 +159,8 @@ export function renderLiveThinking(
       const cc = res.choice === 'COOPERATE' ? 'green' : 'red';
       const icon = res.choice === 'COOPERATE' ? '[+]' : '[x]';
       const bar = progressBar([...past, res.choice], false, totalRounds);
-      const r1 = res.reasoning.slice(0, reasoningWidth);
-      const r2 = res.reasoning.slice(reasoningWidth, reasoningWidth * 2);
+      const r1 = res.reasoning.slice(0, r1Width);
+      const r2 = res.reasoning.slice(r1Width, r1Width + r2Width);
       lines.push(botLine);
       lines.push(` ${groupTag(model)} {white-fg}${name}{/white-fg}  ${bar}  {${cc}-fg}${icon} ${res.choice.padEnd(10)}{/${cc}-fg}`);
       lines.push(`   {gray-fg}"${r1}${r2 ? '' : '"'}{/gray-fg}`);
@@ -185,7 +186,8 @@ export function renderLiveResults(
     `  ·  Round [{green-fg}${round}/${totalRounds} ✓{/green-fg}]`;
 
   const screenWidth = (ui.screen.width as number) || process.stdout.columns || 100;
-  const reasoningWidth = Math.max(20, screenWidth - 10);
+  const r1Width = Math.max(20, screenWidth - 10);
+  const r2Width = Math.max(20, screenWidth - 7);
 
   const lines = [hdr, ''];
   for (const { model, res, botChoice, score } of moves) {
@@ -208,8 +210,8 @@ export function renderLiveResults(
       `  {${cc}-fg}${icon} ${choice}{/${cc}-fg}` +
       `  {${sc}-fg}+${score}pts{/${sc}-fg}`,
     );
-    const r1 = res.reasoning.slice(0, reasoningWidth);
-    const r2 = res.reasoning.slice(reasoningWidth, reasoningWidth * 2);
+    const r1 = res.reasoning.slice(0, r1Width);
+    const r2 = res.reasoning.slice(r1Width, r1Width + r2Width);
     lines.push(`   {gray-fg}"${r1}${r2 ? '' : '"'}{/gray-fg}`);
     lines.push(`    {gray-fg}${r2 ? r2 + '"' : ''}{/gray-fg}`);
     lines.push('');

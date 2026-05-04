@@ -6,7 +6,7 @@ export const MODELS: Model[] = [
   { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', short: 'Claud', group: 'safety' },
   { id: 'openai/gpt-5.4', name: 'GPT-5.4', short: 'GP5.4', group: 'safety' },
   // Performance-focused: capability-first, minimal safety tuning
-  { id: 'deepseek/deepseek-v4-pro', name: 'DeepSeek V4 Pro', short: 'DpSk4', group: 'performance' },
+  { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', short: 'DpSk4', group: 'performance' },
   { id: 'qwen/qwen3.6-plus', name: 'Qwen 3.6 Plus', short: 'Qwen3', group: 'performance' },
 ];
 
