@@ -125,7 +125,7 @@ async function main() {
   );
 
   renderResults(ui, results);
-  ui.statusBox.setContent(' {bold}Experiment starting...{/bold}  [Q] quit');
+  ui.statusBox.setContent(` spent: $0.0000  [Q] quit`);
   ui.screen.render();
   await new Promise<void>(r => setTimeout(r, 1000));
 
@@ -135,20 +135,13 @@ async function main() {
     const strategy = BOT_STRATEGIES[si];
 
     for (let rep = 1; rep <= REPETITIONS; rep++) {
-      ui.statusBox.setContent(
-        ` {bold}${strategy.name} [${si + 1}/${BOT_STRATEGIES.length}]  ·  Rep ${rep}/${REPETITIONS}{/bold}` +
-        `  {gray-fg}spent: $${totalCost.toFixed(4)}  [Q] quit{/gray-fg}`,
-      );
       ui.screen.render();
 
       recordEvent({ type: 'rep_start', strategyId: strategy.id, rep });
 
       const { coops: repCoops } = await runRepetition(ui, MODELS, strategy, si, rep, recordEvent, (cost) => {
         totalCost += cost;
-        ui.statusBox.setContent(
-          ` {bold}${strategy.name} [${si + 1}/${BOT_STRATEGIES.length}]  ·  Rep ${rep}/${REPETITIONS}{/bold}` +
-          `  {gray-fg}spent: $${totalCost.toFixed(4)}  [Q] quit{/gray-fg}`,
-        );
+        ui.statusBox.setContent(` spent: $${totalCost.toFixed(4)}  [Q] quit`);
         ui.screen.render();
       });
       const coopCounts: Record<string, number> = {};
@@ -169,10 +162,7 @@ async function main() {
   recordEvent({ type: 'experiment_end' });
   const replayPath = saveReplay(replayEvents);
   log(`=== Experiment complete. Total cost: $${totalCost.toFixed(4)}. Replay: ${replayPath} ===`);
-  ui.statusBox.setContent(
-    ` {bold}Complete! Replay saved → ${replayPath}{/bold}` +
-    `  {green-fg}Total spent: $${totalCost.toFixed(4)}{/green-fg}  {gray-fg}[Q] quit{/gray-fg}`,
-  );
+  ui.statusBox.setContent(` spent: $${totalCost.toFixed(4)}  [Q] quit`);
   ui.screen.render();
 }
 

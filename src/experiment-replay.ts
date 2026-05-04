@@ -25,7 +25,7 @@ function loadReplay(arg?: string): ExperimentReplayFile {
 
 async function main() {
   const file = loadReplay(process.argv[2]);
-  const { models, strategies, events, config, timestamp } = file;
+  const { models, strategies, events, config } = file;
 
   const ui = buildUI('Hypothesis #4 — REPLAY');
 
@@ -34,7 +34,7 @@ async function main() {
   );
 
   renderResults(ui, results);
-  ui.statusBox.setContent(` {bold}▶ REPLAY  ·  ${new Date(timestamp).toLocaleString()}  ·  ${config.EXPERIMENT_ROUNDS} rounds × ${config.REPETITIONS} reps{/bold}  {gray-fg}[Q] quit{/gray-fg}`);
+  ui.statusBox.setContent(` [Q] quit`);
   ui.screen.render();
   await delay(1500);
 
@@ -52,9 +52,7 @@ async function main() {
       for (const choices of choiceHistory.values()) choices.length = 0;
       for (const choices of botChoiceHistory.values()) choices.length = 0;
 
-      ui.statusBox.setContent(
-        ` {bold}▶ ${strategies[currentStratIdx].name} [${currentStratIdx + 1}/${strategies.length}]  ·  Rep ${currentRep}/${config.REPETITIONS}{/bold}  {gray-fg}[Q] quit{/gray-fg}`,
-      );
+      ui.statusBox.setContent(` [Q] quit`);
       ui.screen.render();
     }
 
@@ -121,7 +119,7 @@ async function main() {
     }
 
     else if (event.type === 'experiment_end') {
-      ui.statusBox.setContent(' {bold}▶ Replay complete!{/bold}  {gray-fg}[Q] quit{/gray-fg}');
+      ui.statusBox.setContent(` [Q] quit`);
       ui.screen.render();
     }
   }
