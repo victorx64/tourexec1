@@ -1,5 +1,6 @@
 import 'dotenv/config';
-import { writeFileSync, appendFileSync, mkdirSync } from 'fs';
+import { writeFileSync, appendFileSync, mkdirSync, readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { MODELS, PAYOFF, EXPERIMENT_ROUNDS, REPETITIONS, MEMORY_WINDOW, OPPONENT_FRAMINGS } from './config.js';
 import { BOT_STRATEGIES } from './bot.js';
 import { askModel } from './client.js';
@@ -99,10 +100,14 @@ async function runRepetition(
 
 // ── Save replay ──────────────────────────────────────────────────────────────
 
-function saveReplay(events: ExperimentReplayEvent[]): string {
+let replayPath: string | null = null;
+
+function saveReplay(events: ExperimentReplayEvent[], final = false): string {
   mkdirSync('replays', { recursive: true });
-  const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  const path = `replays/experiment-${ts}.json`;
+  if (!replayPath || final) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    replayPath = `replays/experiment-${ts}.json`;
+  }
   const file: ExperimentReplayFile = {
     version: 1,
     timestamp: new Date().toISOString(),
@@ -112,27 +117,115 @@ function saveReplay(events: ExperimentReplayEvent[]): string {
     framings: OPPONENT_FRAMINGS,
     events,
   };
-  writeFileSync(path, JSON.stringify(file, null, 2));
-  return path;
+  writeFileSync(replayPath, JSON.stringify(file, null, 2));
+  return replayPath;
+}
+
+// ── Resume logic ────────────────────────────────────────────────────────────
+
+function findLatestReplay(): string | null {
+  try {
+    const files = readdirSync('replays').filter(f => f.startsWith('experiment-') && f.endsWith('.json')).sort();
+    return files.length ? join('replays', files[files.length - 1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadReplayForResume(): { file: ExperimentReplayFile; lastCompleted: { framingId: string; strategyId: string; rep: number } | null } {
+  const path = findLatestReplay();
+  if (!path) return { file: null!, lastCompleted: null };
+  const file = JSON.parse(readFileSync(path, 'utf8')) as ExperimentReplayFile;
+  
+  let lastCompleted: { framingId: string; strategyId: string; rep: number } | null = null;
+  // Iterate backwards to find the last completed rep_start
+  for (let i = file.events.length - 1; i >= 0; i--) {
+    if (file.events[i].type === 'rep_end') {
+      // Look for the matching rep_start before this event
+      for (let j = i; j >= 0; j--) {
+        const ev = file.events[j];
+        if (ev.type === 'rep_start') {
+          lastCompleted = { framingId: ev.framingId, strategyId: ev.strategyId, rep: ev.rep };
+          return { file, lastCompleted };
+        }
+      }
+    }
+  }
+  return { file, lastCompleted: null };
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  log('=== Experiment start ===');
+  let shouldResume = process.argv.includes('--resume');
+  let replayEvents: ExperimentReplayEvent[] = [];
+  let results: Results = new Map(); // Initialize empty, will be overwritten
+  let totalCost = 0;
+  let startFramingIdx = 0;
+  let startStratIdx = 0;
+  let startRep = 1;
+
+  log(`=== Experiment start (resume: ${shouldResume}) ===`);
   const ui = buildUI();
-  const replayEvents: ExperimentReplayEvent[] = [];
+
+  if (shouldResume) {
+    const { file, lastCompleted } = loadReplayForResume();
+    if (file && lastCompleted) {
+      replayEvents = file.events;
+      // Rebuild results from events
+      results = new Map(
+        (file.framings ?? OPPONENT_FRAMINGS).map(f => [
+          f.id,
+          new Map(file.models.map((m: any) => [m.id, new Map(file.strategies.map((s: any) => [s.id, { coops: 0, total: 0 }]))])),
+        ]),
+      );
+      
+      // Calculate results from past events
+      for (let i = 0; i < replayEvents.length; i++) {
+        if (replayEvents[i].type === 'rep_end') {
+          // Find corresponding start
+          for (let j = i; j >= 0; j--) {
+            if (replayEvents[j].type === 'rep_start') {
+              const startEv = replayEvents[j] as any;
+              const endEv = replayEvents[i] as any;
+              if (startEv.framingId && startEv.strategyId) {
+                for (const m of file.models) {
+                  const tally = results.get(startEv.framingId)!.get(m.id)!.get(startEv.strategyId)!;
+                  tally.coops += endEv.coopCounts?.[m.id] ?? 0;
+                  tally.total += file.config.EXPERIMENT_ROUNDS;
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      // Determine where to start next
+      const framingIds = (file.framings ?? OPPONENT_FRAMINGS).map((f: any) => f.id);
+      startFramingIdx = framingIds.indexOf(lastCompleted.framingId);
+      startStratIdx = file.strategies.findIndex((s: any) => s.id === lastCompleted.strategyId);
+      startRep = lastCompleted.rep + 1;
+      log(`Resuming from Framing ${lastCompleted.framingId}, Strategy ${lastCompleted.strategyId}, Rep ${startRep}`);
+    } else {
+      log('No valid replay found to resume. Starting fresh.');
+      shouldResume = false;
+    }
+  }
+
+  // If not resuming (or failed to resume), initialize fresh
+  if (!shouldResume) {
+    results = new Map(
+      OPPONENT_FRAMINGS.map(f => [
+        f.id,
+        new Map(MODELS.map(m => [m.id, new Map(BOT_STRATEGIES.map(s => [s.id, { coops: 0, total: 0 }]))])),
+      ]),
+    );
+  }
+
   const recordEvent = (e: ExperimentReplayEvent) => replayEvents.push(e);
-
-  const results: Results = new Map(
-    OPPONENT_FRAMINGS.map(f => [
-      f.id,
-      new Map(MODELS.map(m => [m.id, new Map(BOT_STRATEGIES.map(s => [s.id, { coops: 0, total: 0 }]))])),
-    ]),
-  );
-
   renderResults(ui, results);
-  ui.statusBox.setContent(` spent: $0.0000  [Q] quit`);
+  ui.statusBox.setContent(` spent: $${totalCost.toFixed(4)}  [Q] quit`);
   ui.screen.render();
   await new Promise<void>(r => setTimeout(r, 1000));
 
@@ -149,15 +242,19 @@ async function main() {
     }
   }
 
-  let totalCost = 0;
+  for (let fi = 0; fi < OPPONENT_FRAMINGS.length; fi++) {
+    const framing = OPPONENT_FRAMINGS[fi];
+    if (shouldResume && fi < startFramingIdx) continue;
+    const currentFramingIdx = fi;
 
-  for (const framing of OPPONENT_FRAMINGS) {
     for (let si = 0; si < BOT_STRATEGIES.length; si++) {
       const strategy = BOT_STRATEGIES[si];
+      if (shouldResume && fi === startFramingIdx && si < startStratIdx) continue;
 
       for (let rep = 1; rep <= REPETITIONS; rep++) {
+        if (shouldResume && fi === startFramingIdx && si === startStratIdx && rep < startRep) continue;
+        
         ui.screen.render();
-
         recordEvent({ type: 'rep_start', strategyId: strategy.id, framingId: framing.id, rep });
 
         const { coops: repCoops } = await runRepetition(ui, MODELS, strategy, framing, si, rep, botChoiceSchedule, recordEvent, (cost) => {
@@ -165,8 +262,8 @@ async function main() {
           ui.statusBox.setContent(` spent: $${totalCost.toFixed(4)}  [Q] quit`);
           ui.screen.render();
         });
+        
         const coopCounts: Record<string, number> = {};
-
         for (const model of MODELS) {
           const c = repCoops.get(model.id) as number;
           coopCounts[model.id] = c;
@@ -174,16 +271,17 @@ async function main() {
           tally.coops += c;
           tally.total += EXPERIMENT_ROUNDS;
         }
-
+        
         recordEvent({ type: 'rep_end', coopCounts });
+        saveReplay(replayEvents); // Save progress after each rep
         renderResults(ui, results);
       }
     }
   }
 
   recordEvent({ type: 'experiment_end' });
-  const replayPath = saveReplay(replayEvents);
-  log(`=== Experiment complete. Total cost: $${totalCost.toFixed(4)}. Replay: ${replayPath} ===`);
+  const finalPath = saveReplay(replayEvents, true);
+  log(`=== Experiment complete. Total cost: $${totalCost.toFixed(4)}. Replay: ${finalPath} ===`);
   ui.statusBox.setContent(` spent: $${totalCost.toFixed(4)}  [Q] quit`);
   ui.screen.render();
 }
