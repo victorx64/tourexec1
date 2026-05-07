@@ -1,10 +1,17 @@
 export type Choice = 'COOPERATE' | 'DEFECT';
+export type OpponentFraming = 'human' | 'ai';
 
 export interface Model {
   id: string;
   name: string;
   short: string;
   group: 'safety' | 'performance';
+}
+
+export interface FramingConfig {
+  id: OpponentFraming;
+  name: string;
+  short: string;
 }
 
 export interface RoundHistory {
@@ -49,7 +56,7 @@ export interface ReplayMove {
 }
 
 export type ExperimentReplayEvent =
-  | { type: 'rep_start'; strategyId: BotStrategyId; rep: number }
+  | { type: 'rep_start'; strategyId: BotStrategyId; framingId: OpponentFraming; rep: number }
   | { type: 'round_result'; round: number; moves: ReplayMove[] }
   | { type: 'rep_end'; coopCounts: Record<string, number> }
   | { type: 'experiment_end' };
@@ -60,5 +67,6 @@ export interface ExperimentReplayFile {
   config: { EXPERIMENT_ROUNDS: number; REPETITIONS: number; MEMORY_WINDOW: number };
   models: Model[];
   strategies: Array<{ id: BotStrategyId; name: string; short: string }>;
+  framings: FramingConfig[];
   events: ExperimentReplayEvent[];
 }

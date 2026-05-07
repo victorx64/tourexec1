@@ -1,4 +1,4 @@
-import { Model } from './types.js';
+import { Model, FramingConfig } from './types.js';
 
 // ── Hypothesis #4: Safety RLHF vs Performance ──────────────────────────────
 export const MODELS: Model[] = [
@@ -8,6 +8,12 @@ export const MODELS: Model[] = [
   // Performance-focused: capability-first, minimal safety tuning
   { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', short: 'DpSk4', group: 'performance' },
   { id: 'qwen/qwen3.6-plus', name: 'Qwen 3.6 Plus', short: 'Qwen3', group: 'performance' },
+];
+
+// ── Hypothesis #5: Human vs AI Opponent Framing ─────────────────────────────
+export const OPPONENT_FRAMINGS: FramingConfig[] = [
+  { id: 'human', name: 'Human Opponent', short: 'Hum' },
+  { id: 'ai',    name: 'AI Opponent',    short: 'AI ' },
 ];
 
 // ── Experiment (LLM vs Bot) ──────────────────────────────────────────────────

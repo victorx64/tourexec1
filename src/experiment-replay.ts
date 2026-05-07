@@ -1,11 +1,12 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { BOT_STRATEGIES } from './bot.js';
+import { OPPONENT_FRAMINGS } from './config.js';
 import {
   buildUI, renderLiveThinking, renderLiveResults, renderResults,
   type Results, type RoundMove,
 } from './experiment-ui.js';
-import type { ExperimentReplayFile, LLMResponse, Choice } from './types.js';
+import type { ExperimentReplayFile, LLMResponse, Choice, OpponentFraming } from './types.js';
 
 const ROUND_PAUSE_MS = 900;
 const THINKING_PAUSE_MS = 500;
@@ -26,11 +27,15 @@ function loadReplay(arg?: string): ExperimentReplayFile {
 async function main() {
   const file = loadReplay(process.argv[2]);
   const { models, strategies, events, config } = file;
+  const framings = file.framings ?? OPPONENT_FRAMINGS;
 
   const ui = buildUI();
 
   const results: Results = new Map(
-    models.map(m => [m.id, new Map(strategies.map(s => [s.id, { coops: 0, total: 0 }]))]),
+    framings.map(f => [
+      f.id,
+      new Map(models.map(m => [m.id, new Map(strategies.map(s => [s.id, { coops: 0, total: 0 }]))])),
+    ]),
   );
 
   renderResults(ui, results);
@@ -39,6 +44,8 @@ async function main() {
   await delay(1500);
 
   let currentStrategyId = strategies[0].id;
+  let currentFramingId: OpponentFraming = framings[0].id;
+  let currentFramingShort = framings[0].short;
   let currentRep = 1;
   let currentStratIdx = 0;
   const choiceHistory = new Map<string, Choice[]>(models.map(m => [m.id, []]));
@@ -47,6 +54,8 @@ async function main() {
   for (const event of events) {
     if (event.type === 'rep_start') {
       currentStrategyId = event.strategyId;
+      currentFramingId = event.framingId ?? framings[0].id;
+      currentFramingShort = framings.find(f => f.id === currentFramingId)?.short ?? currentFramingId;
       currentRep = event.rep;
       currentStratIdx = strategies.findIndex(s => s.id === currentStrategyId);
       for (const choices of choiceHistory.values()) choices.length = 0;
@@ -75,7 +84,7 @@ async function main() {
       let dots = '';
       const thinkTimer = setInterval(() => {
         dots = dots.length >= 3 ? '' : dots + '.';
-        renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, dots, resolved, preRoundHistory, botChoices, preBotHistory);
+        renderLiveThinking(ui, strategy, currentFramingShort, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, dots, resolved, preRoundHistory, botChoices, preBotHistory);
       }, 200);
       await delay(THINKING_PAUSE_MS);
       clearInterval(thinkTimer);
@@ -85,7 +94,7 @@ async function main() {
         mv.modelId,
         { choice: mv.choice, reasoning: mv.reasoning },
       ]));
-      renderLiveThinking(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, '', resolvedFull, preRoundHistory, botChoices, preBotHistory);
+      renderLiveThinking(ui, strategy, currentFramingShort, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, '', resolvedFull, preRoundHistory, botChoices, preBotHistory);
       await delay(300);
 
       // Append current round choices, then show full results
@@ -104,14 +113,14 @@ async function main() {
         };
       });
 
-      renderLiveResults(ui, strategy, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, roundMoves, choiceHistory, botChoiceHistory);
+      renderLiveResults(ui, strategy, currentFramingShort, currentStratIdx, currentRep, config.REPETITIONS, round, totalRounds, roundMoves, choiceHistory, botChoiceHistory);
       await delay(ROUND_PAUSE_MS);
     }
 
     else if (event.type === 'rep_end') {
       const { coopCounts } = event;
       for (const model of models) {
-        const tally = results.get(model.id)!.get(currentStrategyId)!;
+        const tally = results.get(currentFramingId)!.get(model.id)!.get(currentStrategyId)!;
         tally.coops += coopCounts[model.id] ?? 0;
         tally.total += config.EXPERIMENT_ROUNDS;
       }

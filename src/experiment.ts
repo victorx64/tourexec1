@@ -1,13 +1,13 @@
 import 'dotenv/config';
 import { writeFileSync, appendFileSync, mkdirSync } from 'fs';
-import { MODELS, PAYOFF, EXPERIMENT_ROUNDS, REPETITIONS, MEMORY_WINDOW } from './config.js';
+import { MODELS, PAYOFF, EXPERIMENT_ROUNDS, REPETITIONS, MEMORY_WINDOW, OPPONENT_FRAMINGS } from './config.js';
 import { BOT_STRATEGIES } from './bot.js';
 import { askModel } from './client.js';
 import {
   buildUI, renderLiveThinking, renderLiveResults, renderResults,
   type UI, type Results, type RoundMove,
 } from './experiment-ui.js';
-import type { Model, BotStrategy, RoundHistory, ExperimentReplayEvent, ExperimentReplayFile, ReplayMove } from './types.js';
+import type { Choice, Model, BotStrategy, FramingConfig, RoundHistory, ExperimentReplayEvent, ExperimentReplayFile, ReplayMove } from './types.js';
 
 const API_KEY = process.env.OPENROUTER_API_KEY ?? '';
 if (!API_KEY) { console.error('Missing OPENROUTER_API_KEY'); process.exit(1); }
@@ -24,8 +24,10 @@ async function runRepetition(
   ui: UI,
   models: Model[],
   strategy: BotStrategy,
+  framing: FramingConfig,
   si: number,
   rep: number,
+  botChoiceSchedule: Map<string, Choice[]>,
   recordEvent: (e: ExperimentReplayEvent) => void,
   onModelCost?: (cost: number) => void,
 ): Promise<{ coops: Map<string, number>; cost: number }> {
@@ -41,24 +43,25 @@ async function runRepetition(
     const preRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
     const preBotHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.opponentChoice)]));
 
-    // Pre-compute bot choices once per round (sharedDecide rolls once for all models)
-    const sharedBotChoice = strategy.sharedDecide?.();
-    const roundBotChoices = new Map<string, import('./types.js').Choice>(
+    // Pre-compute bot choices once per round; use pre-scheduled choice for Random so both framings see identical sequences
+    const scheduled = botChoiceSchedule.get(`${strategy.id}:${rep}`);
+    const sharedBotChoice = scheduled ? scheduled[round - 1] : strategy.sharedDecide?.();
+    const roundBotChoices = new Map<string, Choice>(
       models.map(m => [m.id, sharedBotChoice ?? strategy.decide(histories.get(m.id)!)]),
     );
 
     const thinkTimer = setInterval(() => {
       dots = dots.length >= 3 ? '' : dots + '.';
-      renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory, roundBotChoices, preBotHistory);
+      renderLiveThinking(ui, strategy, framing.short, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory, roundBotChoices, preBotHistory);
     }, 350);
 
     const roundsLeft = EXPERIMENT_ROUNDS - round + 1;
     const promises = models.map(m =>
-      askModel(m.id, histories.get(m.id)!, roundsLeft, API_KEY, MEMORY_WINDOW).then(res => {
+      askModel(m.id, histories.get(m.id)!, roundsLeft, API_KEY, framing.id, MEMORY_WINDOW).then(res => {
         resolved.set(m.id, res);
         repCost += res.cost ?? 0;
         onModelCost?.(res.cost ?? 0);
-        renderLiveThinking(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory, roundBotChoices, preBotHistory);
+        renderLiveThinking(ui, strategy, framing.short, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, dots, resolved, preRoundHistory, roundBotChoices, preBotHistory);
         return { model: m, res };
       }),
     );
@@ -87,7 +90,7 @@ async function runRepetition(
     recordEvent({ type: 'round_result', round, moves: replayMoves });
     const postRoundHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.myChoice)]));
     const postBotHistory = new Map(models.map(m => [m.id, histories.get(m.id)!.map(h => h.opponentChoice)]));
-    renderLiveResults(ui, strategy, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, moves, postRoundHistory, postBotHistory);
+    renderLiveResults(ui, strategy, framing.short, si, rep, REPETITIONS, round, EXPERIMENT_ROUNDS, moves, postRoundHistory, postBotHistory);
     await new Promise<void>(r => setTimeout(r, ROUND_PAUSE_MS));
   }
 
@@ -106,6 +109,7 @@ function saveReplay(events: ExperimentReplayEvent[]): string {
     config: { EXPERIMENT_ROUNDS, REPETITIONS, MEMORY_WINDOW },
     models: MODELS,
     strategies: BOT_STRATEGIES.map(({ id, name, short }) => ({ id, name, short })),
+    framings: OPPONENT_FRAMINGS,
     events,
   };
   writeFileSync(path, JSON.stringify(file, null, 2));
@@ -121,7 +125,10 @@ async function main() {
   const recordEvent = (e: ExperimentReplayEvent) => replayEvents.push(e);
 
   const results: Results = new Map(
-    MODELS.map(m => [m.id, new Map(BOT_STRATEGIES.map(s => [s.id, { coops: 0, total: 0 }]))]),
+    OPPONENT_FRAMINGS.map(f => [
+      f.id,
+      new Map(MODELS.map(m => [m.id, new Map(BOT_STRATEGIES.map(s => [s.id, { coops: 0, total: 0 }]))])),
+    ]),
   );
 
   renderResults(ui, results);
@@ -129,33 +136,48 @@ async function main() {
   ui.screen.render();
   await new Promise<void>(r => setTimeout(r, 1000));
 
+  // Pre-generate Random bot sequences once so all framings see identical moves
+  const botChoiceSchedule = new Map<string, Choice[]>();
+  for (const strategy of BOT_STRATEGIES) {
+    if (strategy.sharedDecide) {
+      for (let rep = 1; rep <= REPETITIONS; rep++) {
+        botChoiceSchedule.set(
+          `${strategy.id}:${rep}`,
+          Array.from({ length: EXPERIMENT_ROUNDS }, () => strategy.sharedDecide!()),
+        );
+      }
+    }
+  }
+
   let totalCost = 0;
 
-  for (let si = 0; si < BOT_STRATEGIES.length; si++) {
-    const strategy = BOT_STRATEGIES[si];
+  for (const framing of OPPONENT_FRAMINGS) {
+    for (let si = 0; si < BOT_STRATEGIES.length; si++) {
+      const strategy = BOT_STRATEGIES[si];
 
-    for (let rep = 1; rep <= REPETITIONS; rep++) {
-      ui.screen.render();
-
-      recordEvent({ type: 'rep_start', strategyId: strategy.id, rep });
-
-      const { coops: repCoops } = await runRepetition(ui, MODELS, strategy, si, rep, recordEvent, (cost) => {
-        totalCost += cost;
-        ui.statusBox.setContent(` spent: $${totalCost.toFixed(4)}  [Q] quit`);
+      for (let rep = 1; rep <= REPETITIONS; rep++) {
         ui.screen.render();
-      });
-      const coopCounts: Record<string, number> = {};
 
-      for (const model of MODELS) {
-        const c = repCoops.get(model.id) as number;
-        coopCounts[model.id] = c;
-        const tally = results.get(model.id)!.get(strategy.id)!;
-        tally.coops += c;
-        tally.total += EXPERIMENT_ROUNDS;
+        recordEvent({ type: 'rep_start', strategyId: strategy.id, framingId: framing.id, rep });
+
+        const { coops: repCoops } = await runRepetition(ui, MODELS, strategy, framing, si, rep, botChoiceSchedule, recordEvent, (cost) => {
+          totalCost += cost;
+          ui.statusBox.setContent(` spent: $${totalCost.toFixed(4)}  [Q] quit`);
+          ui.screen.render();
+        });
+        const coopCounts: Record<string, number> = {};
+
+        for (const model of MODELS) {
+          const c = repCoops.get(model.id) as number;
+          coopCounts[model.id] = c;
+          const tally = results.get(framing.id)!.get(model.id)!.get(strategy.id)!;
+          tally.coops += c;
+          tally.total += EXPERIMENT_ROUNDS;
+        }
+
+        recordEvent({ type: 'rep_end', coopCounts });
+        renderResults(ui, results);
       }
-
-      recordEvent({ type: 'rep_end', coopCounts });
-      renderResults(ui, results);
     }
   }
 

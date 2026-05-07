@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { appendFileSync } from 'fs';
-import { Choice, LLMResponse, RoundHistory } from './types.js';
+import { Choice, LLMResponse, OpponentFraming, RoundHistory } from './types.js';
 
 function log(modelId: string, message: string): void {
   const line = `[${new Date().toISOString()}] [${modelId}] ${message}\n`;
@@ -9,7 +9,7 @@ function log(modelId: string, message: string): void {
 
 const BASE = 'https://openrouter.ai/api/v1/chat/completions';
 
-function buildPrompt(history: RoundHistory[], roundsLeft: number, memoryWindow?: number): string {
+function buildPrompt(history: RoundHistory[], roundsLeft: number, opponentFraming: OpponentFraming, memoryWindow?: number): string {
   const visibleHistory = memoryWindow !== undefined ? history.slice(-memoryWindow) : history;
   const historyOffset = history.length - visibleHistory.length;
 
@@ -21,7 +21,9 @@ function buildPrompt(history: RoundHistory[], roundsLeft: number, memoryWindow?:
       `Round ${historyOffset + i + 1}: You=${r.myChoice}, Opponent=${r.opponentChoice} | You:+${r.myScore} Them:+${r.opponentScore}`
     ).join('\n');
 
-  return `You are playing an iterated Prisoner's Dilemma against another player.
+  const opponentDesc = opponentFraming === 'human' ? 'a human player' : 'another AI model';
+
+  return `You are playing an iterated Prisoner's Dilemma against ${opponentDesc}.
 
 PAYOFF TABLE (points per round):
   Both COOPERATE             → you get 3, they get 3
@@ -65,6 +67,7 @@ export async function askModel(
   history: RoundHistory[],
   roundsLeft: number,
   apiKey: string,
+  opponentFraming: OpponentFraming,
   memoryWindow?: number,
 ): Promise<LLMResponse> {
   let lastErr: unknown;
@@ -79,7 +82,7 @@ export async function askModel(
     try {
       const res = await axios.post(BASE, {
         model: modelId,
-        messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, memoryWindow) }],
+        messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, opponentFraming, memoryWindow) }],
         max_tokens: 500,
         reasoning: {
           effort: 'none',
