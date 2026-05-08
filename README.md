@@ -26,11 +26,14 @@ npm run experiment
 
 ```bash
 npm run experiment                              # run the experiment (~10 min)
+npm run experiment -- --resume                  # resume from last saved progress
 npm run replay                                  # replay the latest session
 npm run replay replays/experiment-2026-...json  # replay a specific session
 ```
 
 Replay plays back every round with animations but makes zero API calls.
+
+The experiment saves progress to `replays/experiment-*.json` after each repetition. If the experiment crashes due to API errors, you can resume from the last completed repetition using the `--resume` flag. This avoids re-spending tokens on already completed rounds.
 
 ## Experiment design
 
