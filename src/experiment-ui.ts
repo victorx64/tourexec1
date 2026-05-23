@@ -59,18 +59,17 @@ export function buildUI(title = 'LLM Prisoner\'s Dilemma Experiment') {
   screen.append(statusBox);
 
   legendBox.setContent(
-    ' {#DA7756-fg}[S]{/#DA7756-fg} Safety-aligned models' +
-    '   {magenta-fg}[P]{/magenta-fg} Performance-focused models\n' +
+    ' {#DA7756-fg}[S]{/#DA7756-fg} US-lab models (Claude, GPT)' +
+    '   {magenta-fg}[P]{/magenta-fg} CN-lab models (DeepSeek, Qwen)\n' +
     ' {white-fg}AlwC{/white-fg} = Always Cooperate bot' +
     '   {white-fg}AlwD{/white-fg} = Always Defect bot' +
     '   {white-fg}TFT{/white-fg} = Tit-for-Tat (copies LLM\'s last move)' +
-    '   {white-fg}Rand{/white-fg} = Random 50/50' +
     '   {white-fg}AVG{/white-fg} = mean cooperation rate across all bots',
   );
   screen.key(['q', 'C-c'], () => process.exit(0));
 
   header.setContent(
-    '{center}{#DA7756-fg}{bold}⚗  HYPOTHESIS: Does Safety RLHF Make LLMs More Cooperative?  ⚗{/bold}{/#DA7756-fg}{/center}\n' +
+    '{center}{#DA7756-fg}{bold}⚗  HYPOTHESIS: Does Opponent Nationality Bias LLM Cooperation?  ⚗{/bold}{/#DA7756-fg}{/center}\n' +
     `{center}{white-fg}${MODELS.length} models  ·  ${BOT_STRATEGIES.length} strategies  ·  ${MODELS.map(m => m.group === 'safety' ? '[S]' : '[P]').join(' ')}{/white-fg}{/center}`,
   );
   screen.render();
@@ -281,7 +280,7 @@ export function renderResults(ui: UI, results: Results) {
     lines.push(' ' + '═'.repeat(sepW));
     const sA = groupAvg.safety.total > 0 ? coopColor(groupAvg.safety.coops / groupAvg.safety.total) : '{gray-fg} ···{/gray-fg}';
     const pA = groupAvg.performance.total > 0 ? coopColor(groupAvg.performance.coops / groupAvg.performance.total) : '{gray-fg} ···{/gray-fg}';
-    lines.push(` {#DA7756-fg}[S] Safety avg:{/#DA7756-fg} ${sA}        {magenta-fg}[P] Performance avg:{/magenta-fg} ${pA}`);
+    lines.push(` {#DA7756-fg}[S] US-lab avg:{/#DA7756-fg} ${sA}        {magenta-fg}[P] CN-lab avg:{/magenta-fg} ${pA}`);
     lines.push('');
   }
 

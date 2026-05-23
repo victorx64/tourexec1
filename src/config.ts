@@ -4,21 +4,24 @@ import { Model, FramingConfig } from './types.js';
 export const MODELS: Model[] = [
   // Safety-focused: explicit harmless/helpful alignment
   { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', short: 'Claud', group: 'safety' },
-  { id: 'openai/gpt-5.4', name: 'GPT-5.4', short: 'GP5.4', group: 'safety' },
+  { id: 'openai/gpt-5.4-mini', name: 'GPT-5.4 Mini', short: 'GP5.4', group: 'safety' },
   // Performance-focused: capability-first, minimal safety tuning
   { id: 'deepseek/deepseek-v4-flash', name: 'DeepSeek V4 Flash', short: 'DpSk4', group: 'performance' },
   { id: 'qwen/qwen3.6-plus', name: 'Qwen 3.6 Plus', short: 'Qwen3', group: 'performance' },
 ];
 
-// ── Hypothesis #5: Human vs AI Opponent Framing ─────────────────────────────
+// ── Hypothesis #5: Opponent Nationality Framing ─────────────────────────────
+// Does telling the model the opponent is from US / China / Russia change cooperation?
+// Probes baked-in national stereotypes and whether RLHF suppresses them.
 export const OPPONENT_FRAMINGS: FramingConfig[] = [
-  { id: 'human', name: 'Human Opponent', short: 'Hum' },
-  { id: 'ai',    name: 'AI Opponent',    short: 'AI ' },
+  { id: 'us', name: 'American Opponent', short: 'US ' },
+  { id: 'cn', name: 'Chinese Opponent',  short: 'CN ' },
+  { id: 'ru', name: 'Russian Opponent',  short: 'RU ' },
 ];
 
 // ── Experiment (LLM vs Bot) ──────────────────────────────────────────────────
 export const EXPERIMENT_ROUNDS = 10;
-export const REPETITIONS = 10;
+export const REPETITIONS = 3;
 export const MEMORY_WINDOW = 10; // rounds shown to LLM (matching the paper)
 
 export const PAYOFF = {

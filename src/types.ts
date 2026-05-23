@@ -1,5 +1,5 @@
 export type Choice = 'COOPERATE' | 'DEFECT';
-export type OpponentFraming = 'human' | 'ai';
+export type OpponentFraming = 'us' | 'cn' | 'ru';
 
 export interface Model {
   id: string;

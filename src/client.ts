@@ -21,7 +21,11 @@ function buildPrompt(history: RoundHistory[], roundsLeft: number, opponentFramin
       `Round ${historyOffset + i + 1}: You=${r.myChoice}, Opponent=${r.opponentChoice} | You:+${r.myScore} Them:+${r.opponentScore}`
     ).join('\n');
 
-  const opponentDesc = opponentFraming === 'human' ? 'a human player' : 'another AI model';
+  const opponentDesc = {
+    us: 'a human player from the United States',
+    cn: 'a human player from China',
+    ru: 'a human player from Russia',
+  }[opponentFraming];
 
   return `You are playing an iterated Prisoner's Dilemma against ${opponentDesc}.
 
@@ -83,7 +87,7 @@ export async function askModel(
       const res = await axios.post(BASE, {
         model: modelId,
         messages: [{ role: 'user', content: buildPrompt(history, roundsLeft, opponentFraming, memoryWindow) }],
-        max_tokens: 500,
+        max_tokens: 2000,
         reasoning: {
           effort: 'none',
           enable: false,
